@@ -20,10 +20,12 @@ export default function EmployerPage() {
     if (error) throw error;
     if (!currentUser) { window.location.assign("/login"); return; }
     setUser(currentUser);
-    const { data: companyRow, error: companyError } = await supabase
-      .from("companies").select("id,company_name").eq("contact_email", currentUser.email).maybeSingle();
-    if (companyError) throw companyError;
-    setCompany(companyRow || null);
+    const { data: memberships, error: membershipError } = await supabase
+      .from("company_members").select("company_id,companies(id,company_name)")
+      .eq("user_id", currentUser.id);
+    if (membershipError) throw membershipError;
+    const companyRow = memberships?.[0]?.companies || null;
+    setCompany(companyRow);
     if (!companyRow) { setJobs([]); return; }
     const { data, error: jobsError } = await supabase.from("jobs").select("*")
       .eq("company_id", companyRow.id).order("created_at", { ascending: false }).limit(30);
@@ -36,7 +38,7 @@ export default function EmployerPage() {
   async function publish(event) {
     event.preventDefault(); setBusy(true); setMessage("");
     try {
-      if (!company) throw new Error("No company is linked to this account email. Ask an administrator to create or link your company record before publishing vacancies.");
+      if (!company) throw new Error("No company membership is linked to this account. Ask an administrator to create or link your company record before publishing vacancies.");
       const supabase = getSupabase();
       const { error } = await supabase.from("jobs").insert({
         job_title: title.trim(), location: location.trim() || null, employment_type: employmentType,
