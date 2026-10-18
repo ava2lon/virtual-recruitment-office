@@ -36,6 +36,7 @@ function candidateName(candidate) {
 }
 
 export default function EmployerPage() {
+  const previewReadOnly = process.env.NEXT_PUBLIC_WORKBRIDGE_PREVIEW_READONLY === "true";
   const [user, setUser] = useState(null);
   const [companies, setCompanies] = useState([]);
   const [companyId, setCompanyId] = useState("");
@@ -114,6 +115,7 @@ export default function EmployerPage() {
 
   async function publish(event) {
     event.preventDefault();
+    if (previewReadOnly) { setMessage("This preview is read-only because it shares the live WorkBridge database. Publishing and candidate status changes are disabled here."); return; }
     if (!companyId) { setMessage("Choose an employer workspace before publishing."); return; }
     setBusy(true);
     setMessage("");
@@ -170,7 +172,7 @@ export default function EmployerPage() {
   }
 
   async function updateApplication(application, status) {
-    if (application.status !== "EMPLOYER_REVIEW" || updatingId) return;
+    if (previewReadOnly || application.status !== "EMPLOYER_REVIEW" || updatingId) return;
     setUpdatingId(application.id);
     setMessage("");
     try {
@@ -224,6 +226,8 @@ export default function EmployerPage() {
         </div>
       )}
 
+      {previewReadOnly && <p className="preview-readonly-note" role="status">Preview mode: read-only to protect live vacancies, candidate records, and notifications.</p>}
+
       <div className="employer-layout">
         <div className="dashboard-card">
           <div className="card-heading">
@@ -236,7 +240,7 @@ export default function EmployerPage() {
             <label>Employment type<select value={employmentType} onChange={event => setEmploymentType(event.target.value)}><option>Full-time</option><option>Part-time</option><option>Contract</option><option>Internship</option><option>Temporary</option></select></label>
             <label>Required skills <small>Optional; separate skills with commas.</small><input value={requiredSkills} onChange={event => setRequiredSkills(event.target.value)} placeholder="Customer service, communication" /></label>
             <label>Role description<textarea rows={5} value={description} onChange={event => setDescription(event.target.value)} placeholder="Responsibilities, requirements, and what success looks like…" required /></label>
-            <button className="button" disabled={busy || !user || !companyId}>{busy ? "Publishing…" : "Publish vacancy"}</button>
+            <button className="button" disabled={previewReadOnly || busy || !user || !companyId}>{previewReadOnly ? "Publishing disabled in preview" : busy ? "Publishing…" : "Publish vacancy"}</button>
           </form>
         </div>
 
@@ -282,7 +286,7 @@ export default function EmployerPage() {
                         {application.status === "EMPLOYER_REVIEW" ? (
                           <div className="applicant-actions">
                             <label className="sr-only" htmlFor={"status-" + application.id}>Move candidate</label>
-                            <select id={"status-" + application.id} defaultValue="" disabled={updatingId === application.id} onChange={event => { if (event.target.value) updateApplication(application, event.target.value); }}>
+                            <select id={"status-" + application.id} defaultValue="" disabled={previewReadOnly || updatingId === application.id} onChange={event => { if (event.target.value) updateApplication(application, event.target.value); }}>
                               <option value="" disabled>Move candidate…</option>
                               {employerStatuses.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                             </select>
