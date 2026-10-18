@@ -4,6 +4,15 @@ import { createClient } from "@supabase/supabase-js";
 export const runtime = "nodejs";
 
 export async function POST(request) {
+  // Defense in depth: a preview sharing the live database must never trigger
+  // live vacancy promotion workflows, even if the endpoint is called directly.
+  if (process.env.NEXT_PUBLIC_WORKBRIDGE_PREVIEW_READONLY === "true") {
+    return NextResponse.json(
+      { error: "Vacancy automation is disabled in read-only preview deployments." },
+      { status: 409 }
+    );
+  }
+
   const authorization = request.headers.get("authorization") || "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
   if (!token) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
