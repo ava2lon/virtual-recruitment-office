@@ -175,12 +175,15 @@ export default function EmployerPage() {
     setMessage("");
     try {
       const supabase = getSupabase();
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("applications")
         .update({ status, updated_at: new Date().toISOString() })
         .eq("id", application.id)
-        .eq("status", "EMPLOYER_REVIEW");
+        .eq("status", "EMPLOYER_REVIEW")
+        .select("id,status")
+        .maybeSingle();
       if (error) throw error;
+      if (!data) throw new Error("No application was updated. Refresh the pipeline and confirm that the candidate is still awaiting employer review.");
       setApplications(current => current.map(item => item.id === application.id ? { ...item, status } : item));
       setMessage("Candidate moved to " + labelStatus(status) + ".");
     } catch (error) {
@@ -194,11 +197,13 @@ export default function EmployerPage() {
   const companyJobIds = useMemo(() => new Set(companyJobs.map(job => job.id)), [companyJobs]);
   const visibleApplications = useMemo(() => applications.filter(item => companyJobIds.has(item.job_id)), [applications, companyJobIds]);
   const stages = [
-    { title: "Awaiting review", statuses: ["EMPLOYER_REVIEW"] },
+    { title: "In review", statuses: ["NEW", "SCREENING", "AI_REVIEW", "RECRUITER_REVIEW", "EMPLOYER_REVIEW"] },
     { title: "Shortlisted", statuses: ["SHORTLISTED"] },
     { title: "Interview", statuses: ["INTERVIEW", "FINAL_INTERVIEW"] },
+    { title: "Offer", statuses: ["OFFER"] },
+    { title: "Hired", statuses: ["PLACED"] },
     { title: "On hold", statuses: ["ON_HOLD"] },
-    { title: "Closed out", statuses: ["REJECTED", "WITHDRAWN", "NO_RESPONSE", "PLACED"] }
+    { title: "Closed out", statuses: ["REJECTED", "WITHDRAWN", "NO_RESPONSE"] }
   ];
 
   return (
