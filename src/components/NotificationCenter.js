@@ -9,6 +9,7 @@ function timeLabel(value) {
 }
 
 export default function NotificationCenter() {
+  const previewReadOnly = process.env.NEXT_PUBLIC_WORKBRIDGE_PREVIEW_READONLY === "true";
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
   const [busyId, setBusyId] = useState("");
@@ -36,7 +37,7 @@ export default function NotificationCenter() {
   useEffect(() => { refresh(); }, [refresh]);
 
   async function markRead(item) {
-    if (item.read_at || busyId) return;
+    if (previewReadOnly || item.read_at || busyId) return;
     setBusyId(item.id);
     try {
       const supabase = getSupabase();
@@ -65,7 +66,7 @@ export default function NotificationCenter() {
       {open && (
         <div className="notification-popover" role="dialog" aria-label="Your notifications">
           <div className="notification-heading">
-            <div><strong>Notifications</strong><span>{unread ? unread + " unread" : "You're all caught up"}</span></div>
+            <div><strong>Notifications</strong><span>{previewReadOnly ? "Preview is read-only" : unread ? unread + " unread" : "You're all caught up"}</span></div>
             <button type="button" className="notification-refresh" onClick={refresh} aria-label="Refresh notifications">↻</button>
           </div>
           {error && <p className="notification-error" role="status">{error}</p>}
@@ -79,8 +80,8 @@ export default function NotificationCenter() {
                     <p>{item.body}</p>
                     <time dateTime={item.created_at}>{timeLabel(item.created_at)}</time>
                     <div className="notification-actions">
-                      {item.link_url && <a href={item.link_url} onClick={() => markRead(item)}>{item.read_at ? "Open" : "View update"} ↗</a>}
-                      {!item.read_at && <button type="button" disabled={busyId === item.id} onClick={() => markRead(item)}>{busyId === item.id ? "Saving…" : "Mark read"}</button>}
+                      {item.link_url && <a href={item.link_url} onClick={() => { if (!previewReadOnly) markRead(item); }}>{item.read_at ? "Open" : "View update"} ↗</a>}
+                      {!item.read_at && !previewReadOnly && <button type="button" disabled={busyId === item.id} onClick={() => markRead(item)}>{busyId === item.id ? "Saving…" : "Mark read"}</button>}
                     </div>
                   </div>
                 </article>
