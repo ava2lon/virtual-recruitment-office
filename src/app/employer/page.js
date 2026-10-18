@@ -188,7 +188,7 @@ export default function EmployerPage() {
         .select("id,status")
         .maybeSingle();
       if (error) throw error;
-      if (!data) throw new Error("No application was updated. Refresh the pipeline and confirm that the candidate is still awaiting employer review.");
+      if (!data) throw new Error("No application was updated. Refresh the pipeline and retry; its status may have changed since you loaded it.");
       setApplications(current => current.map(item => item.id === application.id ? { ...item, status } : item));
       setMessage("Candidate moved to " + labelStatus(status) + ".");
     } catch (error) {
