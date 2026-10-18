@@ -6,6 +6,9 @@ import { getSupabase } from "../../lib/supabase";
 const employerStatuses = [
   { value: "SHORTLISTED", label: "Shortlisted" },
   { value: "INTERVIEW", label: "Interview" },
+  { value: "FINAL_INTERVIEW", label: "Final interview" },
+  { value: "OFFER", label: "Offer" },
+  { value: "PLACED", label: "Hired / placed" },
   { value: "ON_HOLD", label: "On hold" },
   { value: "REJECTED", label: "Rejected" }
 ];
@@ -172,7 +175,7 @@ export default function EmployerPage() {
   }
 
   async function updateApplication(application, status) {
-    if (previewReadOnly || application.status !== "EMPLOYER_REVIEW" || updatingId) return;
+    if (previewReadOnly || updatingId) return;
     setUpdatingId(application.id);
     setMessage("");
     try {
@@ -181,7 +184,7 @@ export default function EmployerPage() {
         .from("applications")
         .update({ status, updated_at: new Date().toISOString() })
         .eq("id", application.id)
-        .eq("status", "EMPLOYER_REVIEW")
+        .eq("status", application.status)
         .select("id,status")
         .maybeSingle();
       if (error) throw error;
@@ -198,6 +201,18 @@ export default function EmployerPage() {
   const companyJobs = useMemo(() => jobs.filter(job => job.company_id === companyId), [jobs, companyId]);
   const companyJobIds = useMemo(() => new Set(companyJobs.map(job => job.id)), [companyJobs]);
   const visibleApplications = useMemo(() => applications.filter(item => companyJobIds.has(item.job_id)), [applications, companyJobIds]);
+  const transitions = {
+    NEW: ["SHORTLISTED", "INTERVIEW", "ON_HOLD", "REJECTED"],
+    SCREENING: ["SHORTLISTED", "INTERVIEW", "ON_HOLD", "REJECTED"],
+    AI_REVIEW: ["SHORTLISTED", "INTERVIEW", "ON_HOLD", "REJECTED"],
+    RECRUITER_REVIEW: ["SHORTLISTED", "INTERVIEW", "ON_HOLD", "REJECTED"],
+    EMPLOYER_REVIEW: ["SHORTLISTED", "INTERVIEW", "ON_HOLD", "REJECTED"],
+    SHORTLISTED: ["INTERVIEW", "ON_HOLD", "REJECTED"],
+    INTERVIEW: ["FINAL_INTERVIEW", "OFFER", "ON_HOLD", "REJECTED"],
+    FINAL_INTERVIEW: ["OFFER", "ON_HOLD", "REJECTED"],
+    OFFER: ["PLACED", "ON_HOLD", "REJECTED"],
+    ON_HOLD: ["SHORTLISTED", "INTERVIEW", "REJECTED"]
+  };
   const stages = [
     { title: "In review", statuses: ["NEW", "SCREENING", "AI_REVIEW", "RECRUITER_REVIEW", "EMPLOYER_REVIEW"] },
     { title: "Shortlisted", statuses: ["SHORTLISTED"] },
@@ -283,12 +298,12 @@ export default function EmployerPage() {
                         {candidate?.years_experience != null && <span className="applicant-meta">{candidate.years_experience} years experience</span>}
                         {application.match_score != null && <span className="match-score">{Math.round(Number(application.match_score))}% match</span>}
                         <span className="application-status">{labelStatus(application.status)}</span>
-                        {application.status === "EMPLOYER_REVIEW" ? (
+                        {(transitions[application.status] || []).length > 0 ? (
                           <div className="applicant-actions">
                             <label className="sr-only" htmlFor={"status-" + application.id}>Move candidate</label>
                             <select id={"status-" + application.id} defaultValue="" disabled={previewReadOnly || updatingId === application.id} onChange={event => { if (event.target.value) updateApplication(application, event.target.value); }}>
                               <option value="" disabled>Move candidate…</option>
-                              {employerStatuses.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                              {employerStatuses.filter(option => transitions[application.status]?.includes(option.value)).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                             </select>
                           </div>
                         ) : null}
