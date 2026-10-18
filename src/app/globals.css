@@ -98,3 +98,52 @@ h1,h2,h3{font-family:Manrope,sans-serif;letter-spacing:-1.5px}
 .employer-layout{display:grid;grid-template-columns:1.5fr .7fr;gap:18px;align-items:start}.side-card{background:#eef4ee}.side-card .eyebrow{font-size:10px}.stat-number{font-family:Manrope,sans-serif;font-size:54px;font-weight:800;letter-spacing:-3px;color:var(--green);line-height:1.2;margin-top:25px}.side-card h3{font-size:17px;letter-spacing:-.5px;margin:6px 0}.side-card p{font-size:12px;color:var(--muted);margin-bottom:20px}.page-message{margin-top:18px}
 @media(max-width:850px){.site-header{padding:0 22px;height:72px}.main-nav{display:none}.hero{padding:42px 28px 60px;grid-template-columns:1fr;gap:5px}.hero-copy{max-width:650px}.hero h1{font-size:clamp(43px,9vw,62px)}.hero-art{height:380px;max-width:570px;width:100%;margin:0 auto}.trust-strip{margin:0 22px;padding:22px 0;align-items:flex-start;flex-direction:column}.section{padding:70px 24px}.section-heading{align-items:flex-start;flex-direction:column;gap:15px}.feature-grid{grid-template-columns:1fr}.feature-card{min-height:190px}.feature-card h3{margin-top:32px}.closing-cta{margin:0 22px 55px;padding:32px;align-items:flex-start;flex-direction:column}.auth-wrap{grid-template-columns:1fr;max-width:580px}.auth-aside{min-height:260px}.auth-aside h2{margin-top:35px}.employer-layout{grid-template-columns:1fr}.side-card{min-height:180px}.site-footer{padding:24px;flex-wrap:wrap}.site-footer p{order:3;width:100%}}
 @media(max-width:520px){.site-header{padding:0 16px}.brand{font-size:18px}.brand-mark{width:31px;height:31px}.header-actions{gap:13px}.login-link{display:none}.hero{padding:37px 20px 45px}.hero h1{font-size:43px}.hero-description{font-size:14px}.hero-art{height:320px}.hero-emblem{width:160px;height:160px}.emblem-core{font-size:78px}.orbit{width:245px;height:245px}.orbit-two{height:280px;width:190px}.floating-card{min-width:180px;padding:10px 11px}.card-top{right:-2px;top:25px}.card-bottom{left:-2px;bottom:28px}.spark-one{left:15px}.spark-two{right:17px}.trust-strip>div{gap:12px}.section-heading h2,.closing-cta h2{font-size:35px}.closing-cta{padding:27px 23px}.auth-wrap{padding:0 15px;margin-top:24px}.auth-panel,.auth-aside{padding:25px}.auth-panel h1{font-size:35px}.page-shell{padding:40px 18px 65px}.page-intro h1{font-size:39px}.dashboard-card{padding:21px}.job-card{align-items:flex-start;flex-wrap:wrap}.job-card .text-link{margin-left:65px}.site-footer{gap:10px}.site-footer>span{margin-left:auto}}
+
+
+/* WorkBridge first feature upgrade: notifications, pipeline and vacancy automation */
+.header-actions{position:relative}
+.notification-center{position:relative}
+.notification-trigger{display:inline-flex;align-items:center;gap:7px;position:relative;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);padding:9px 11px;min-height:40px;font-size:12px;font-weight:700;cursor:pointer}
+.notification-trigger>span:first-child{font-size:16px;color:var(--green)}
+.notification-count{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 4px;border-radius:99px;background:var(--green);color:#fff;font-size:10px}
+.notification-popover{position:absolute;z-index:30;top:calc(100% + 12px);right:0;width:min(390px,calc(100vw - 28px));max-height:75vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 22px 55px #183d2b20}
+.notification-heading{display:flex;align-items:center;justify-content:space-between;padding:17px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:1}
+.notification-heading strong,.notification-heading span{display:block}.notification-heading strong{font-family:Manrope,sans-serif;font-size:15px}.notification-heading span{font-size:10px;color:var(--muted);margin-top:2px}
+.notification-refresh{border:1px solid var(--line);border-radius:7px;background:#fff;width:30px;height:30px;cursor:pointer;font-size:17px;color:var(--green)}
+.notification-list{display:flex;flex-direction:column}
+.notification-item{display:flex;gap:11px;padding:15px 18px;border-bottom:1px solid #edf1ed}
+.notification-item.is-unread{background:#f7faf5}
+.notification-dot{width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:transparent;margin-top:7px}
+.notification-item.is-unread .notification-dot{background:#8eb849}
+.notification-copy{min-width:0;flex:1}
+.notification-copy>strong{font-size:12px;display:block}.notification-copy>p{font-size:11px;color:var(--muted);line-height:1.55;margin:4px 0 7px;overflow-wrap:anywhere}
+.notification-copy time{font-size:9px;color:#8a9890}
+.notification-actions{display:flex;gap:14px;margin-top:8px}.notification-actions a,.notification-actions button{border:0;padding:0;background:none;color:var(--green);font-size:10px;font-weight:800;cursor:pointer}.notification-actions button:disabled{opacity:.5}
+.notification-error,.notification-empty{padding:20px;margin:0;font-size:11px;color:var(--muted)}
+.workspace-switcher{display:flex;align-items:center;gap:13px;flex-wrap:wrap;padding:14px 17px;border:1px solid var(--line);background:#fff;border-radius:11px;margin:0 0 20px}
+.workspace-switcher label{font-size:11px;font-weight:800;color:#52655d}
+.workspace-switcher select{max-width:280px;min-width:180px;border:1px solid #dce5de;background:#fcfdfb;border-radius:8px;padding:9px 11px;font:inherit;font-size:12px;color:var(--ink)}
+.workspace-switcher>span{margin-left:auto;font-size:10px;color:var(--muted)}
+.mini-stat-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid #dce7dd;font-size:11px;color:var(--muted)}
+.mini-stat-row strong{font-size:14px;color:var(--ink)}
+.side-card .text-link{display:inline-block;margin-top:13px;font-size:11px}
+.pipeline-section{margin-top:52px}
+.pipeline-heading{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:20px}
+.pipeline-heading h2{font-size:29px;letter-spacing:-1px;margin:8px 0 4px}
+.pipeline-heading p{font-size:12px;color:var(--muted);margin:0}
+.pipeline-columns{display:grid;grid-template-columns:repeat(5,minmax(190px,1fr));gap:12px;align-items:start;overflow-x:auto;padding-bottom:12px}
+.pipeline-column{background:#eff4ef;border:1px solid #e1e9e2;border-radius:12px;padding:11px;min-height:190px}
+.pipeline-column-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.pipeline-column-heading h3{font-size:12px;letter-spacing:-.2px;margin:0}.pipeline-column-heading span{display:grid;place-items:center;min-width:23px;height:23px;border-radius:7px;background:#fff;color:var(--green);font-size:10px;font-weight:800}
+.applicant-card{background:#fff;border:1px solid #e0e8e2;border-radius:10px;padding:12px;margin-bottom:9px;display:flex;flex-direction:column;align-items:flex-start;gap:5px;overflow-wrap:anywhere}
+.applicant-avatar{display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:#e8f1dc;color:var(--green);font-size:13px;font-weight:800;margin-bottom:3px}
+.applicant-card>strong{font-size:12px;line-height:1.4}.applicant-job{font-size:10px;color:var(--green);font-weight:700;line-height:1.4}.applicant-meta{font-size:10px;color:var(--muted)}
+.match-score{font-size:10px;font-weight:800;color:#456d3d;background:#eff6e8;border-radius:5px;padding:3px 6px;margin-top:3px}
+.application-status{font-size:9px;font-weight:800;letter-spacing:.2px;color:#66796d;margin-top:2px}
+.applicant-actions{width:100%;margin-top:6px}.applicant-actions select{width:100%;min-width:0;border:1px solid #dce5de;background:#fcfdfb;border-radius:7px;padding:8px;font-size:10px;color:var(--ink)}
+.applicant-notes{font-size:10px;color:var(--muted);line-height:1.5;margin:4px 0 0}
+.pipeline-empty{font-size:10px;color:#85928a;padding:8px 3px}
+.job-published{display:block;font-size:9px;color:#8a9890;margin-top:8px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:1050px){.pipeline-columns{grid-template-columns:repeat(5,minmax(180px,1fr))}.notification-trigger-label{display:none}.notification-trigger{padding:9px 10px}}
+@media(max-width:700px){.header-actions{gap:10px}.notification-popover{right:-110px}.workspace-switcher>span{margin-left:0;width:100%}.pipeline-heading{align-items:flex-start;flex-direction:column}.pipeline-columns{grid-template-columns:repeat(5,minmax(175px,1fr));margin-right:-8px}.pipeline-section{margin-top:38px}}
