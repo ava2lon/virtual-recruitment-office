@@ -1,4 +1,5 @@
 import "./globals.css";
+import NotificationCenter from "../components/NotificationCenter";
 
 export const metadata = {
   title: "WorkBridge — One platform. Zero friction.",
@@ -19,6 +20,7 @@ export default function RootLayout({ children }) {
             <a href="/profile">My profile</a>
           </nav>
           <div className="header-actions">
+            <NotificationCenter />
             <a className="login-link" href="/login">Log in</a>
             <a className="button button-small" href="/signup">Get started</a>
           </div>
