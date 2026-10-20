@@ -303,3 +303,20 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 .profile-checklist li.is-complete>span{background:#e2e8ff;border-color:#d1dafe;color:#465cda}
 .profile-details-card{min-width:0}
 @media(max-width:760px){.profile-workspace-grid{grid-template-columns:1fr;gap:15px}.profile-progress-card{padding:22px}.profile-details-card{padding:22px}}
+
+
+/* Keep primary navigation reachable on compact screens */
+@media(max-width:850px){
+  .site-header{height:auto;min-height:70px;flex-wrap:wrap;gap:6px 18px;padding-top:10px;padding-bottom:9px}
+  .site-header>.brand{order:1}
+  .site-header>.header-actions{order:2;margin-left:auto}
+  .site-header>.main-nav{display:flex;order:3;width:100%;gap:20px;overflow-x:auto;overscroll-behavior-x:contain;padding:3px 0 5px;scrollbar-width:none}
+  .site-header>.main-nav::-webkit-scrollbar{display:none}
+  .site-header>.main-nav a{white-space:nowrap;font-size:12px}
+}
+@media(max-width:520px){
+  .site-header{gap:5px 10px}
+  .site-header>.main-nav{gap:17px}
+  .site-header>.main-nav a{font-size:11px}
+  .header-actions{gap:9px}
+}
