@@ -203,9 +203,9 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 .auth-aside:before,.auth-aside:after{border-color:#ffffff27}
 .aside-symbol{color:#d5f16e}
 .auth-aside p{color:#d0e1d8}
-.form-stack label{color:#34405f}
+.form-stack label{color:#344a40}
 .form-stack input,.form-stack select,.form-stack textarea{
-  border-color:#d4dfd7;background:#fcfcff;border-radius:10px;
+  border-color:#d4dfd7;background:#fcfdfb;border-radius:10px;
   transition:border-color .2s ease,box-shadow .2s ease,background .2s ease;
 }
 .form-stack input:focus,.form-stack select:focus,.form-stack textarea:focus{
@@ -249,7 +249,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 .pipeline-heading h2{color:var(--wb-navy)}
 .pipeline-column{background:#f8faf7;border-color:#e0e8e2;border-radius:14px;padding:12px}
 .pipeline-column-heading span{background:#fff;color:#26775a;border:1px solid #e8f1dd}
-.applicant-card{border-color:#e1e6f4;border-radius:12px;box-shadow:0 2px 8px rgba(23,35,80,.025);transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}
+.applicant-card{border-color:#e0eee2;border-radius:12px;box-shadow:0 2px 8px rgba(23,35,80,.025);transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}
 .applicant-card:hover{transform:translateY(-2px);border-color:#bfd6c5;box-shadow:0 8px 18px rgba(35,49,119,.07)}
 .applicant-avatar{background:linear-gradient(145deg,#e8f3dc,#e9f3d6);color:#176b52}
 .applicant-job{color:var(--wb-blue)}
@@ -261,7 +261,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 .notification-trigger:hover{border-color:#c6e777;box-shadow:0 5px 14px rgba(23,107,82,.08)}
 .notification-trigger>span:first-child,.notification-actions a,.notification-actions button{color:var(--wb-blue)}
 .notification-count{background:linear-gradient(135deg,var(--wb-blue),var(--wb-violet))}
-.notification-popover{border-color:#e1e6f4;box-shadow:0 22px 55px rgba(17,26,54,.17);border-radius:16px}
+.notification-popover{border-color:#e0eee2;box-shadow:0 22px 55px rgba(17,26,54,.17);border-radius:16px}
 .notification-item.is-unread{background:#f7f9f2}
 .notification-dot{background:transparent}
 .notification-item.is-unread .notification-dot{background:var(--wb-violet)}
