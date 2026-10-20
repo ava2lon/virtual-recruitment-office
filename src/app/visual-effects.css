@@ -7,7 +7,7 @@
 .hero-copy-reveal .hero-description{animation:wb-rise-in .8s .22s both}
 .hero-copy-reveal .hero-actions{animation:wb-rise-in .8s .3s both}
 .hero-copy-reveal .hero-proof{animation:wb-rise-in .8s .38s both}
-.headline-highlight{background:linear-gradient(100deg,#176b52 0%,#32876b 48%,#759b3b 100%);background-clip:text;-webkit-background-clip:text;color:transparent;position:relative}
+.headline-highlight{background:none;background-clip:border-box;-webkit-background-clip:border-box;color:var(--green);-webkit-text-fill-color:var(--green);position:relative}
 .hero-primary{box-shadow:0 8px 18px rgba(23,107,82,.13)}
 .hero-primary span,.hero-secondary span{display:inline-block;transition:transform .22s ease}
 .hero-primary:hover span,.hero-secondary:hover span{transform:translate(3px,-2px)}
