@@ -161,7 +161,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 .art-glow-two{background:radial-gradient(circle,rgba(83,160,122,.18),transparent 72%)}
 .art-grid{background-image:radial-gradient(rgba(23,107,82,.36) .7px,transparent .7px)}
 .connection-path{stroke:rgba(23,107,82,.33)}
-.hero-emblem-redesign{background:linear-gradient(145deg,#4568f5,#303b9f 62%,#8068f8);box-shadow:0 28px 55px rgba(18,79,63,.25),inset 0 1px 0 rgba(255,255,255,.22)}
+.hero-emblem-redesign{background:linear-gradient(145deg,#176b52,#124f3f 62%,#759b3b);box-shadow:0 28px 55px rgba(18,79,63,.25),inset 0 1px 0 rgba(255,255,255,.22)}
 .hero-emblem-redesign:after{border-color:rgba(88,102,228,.23)}
 .emblem-ring{border-color:rgba(255,255,255,.2)}
 .card-glass{box-shadow:0 17px 42px rgba(24,61,43,.11),inset 0 1px 0 #fff}
@@ -243,7 +243,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 .employer-layout>.dashboard-card:first-child{background:rgba(255,255,255,.96)}
 .side-card{background:linear-gradient(155deg,#f0f2ff,#f6f3ff);border-color:#e0e4fb}
 .side-card .eyebrow{color:#176b52}
-.stat-number{background:linear-gradient(100deg,#176b52,#8068f8);background-clip:text;-webkit-background-clip:text;color:transparent}
+.stat-number{background:linear-gradient(100deg,#176b52,#759b3b);background-clip:text;-webkit-background-clip:text;color:transparent}
 .mini-stat-row{border-color:#dfe4fa}
 .pipeline-section{padding-top:6px}
 .pipeline-heading h2{color:var(--wb-navy)}
