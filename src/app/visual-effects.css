@@ -155,7 +155,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 .eyebrow-dot{background:var(--wb-violet);box-shadow:0 0 0 4px #e9f3d6}
 .accent-text{color:var(--wb-blue)}
 .hero-redesign:before{background:radial-gradient(ellipse at 72% 46%,rgba(111,133,255,.17),transparent 57%)}
-.headline-highlight{background:linear-gradient(100deg,#176b52 0%,#32876b 50%,#759b3b 100%)}
+.headline-highlight{background:none!important;background-image:none!important;background-clip:border-box!important;-webkit-background-clip:border-box!important;color:#124f3f!important;-webkit-text-fill-color:#124f3f!important;position:relative}
 .hero-art-redesign:before{background:linear-gradient(145deg,#eef4ee 0%,#e5efd5 50%,#e8f0d8 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.8),0 24px 70px rgba(32,91,65,.06)}
 .art-glow-one{background:radial-gradient(circle,rgba(210,238,128,.32),transparent 72%)}
 .art-glow-two{background:radial-gradient(circle,rgba(83,160,122,.18),transparent 72%)}
