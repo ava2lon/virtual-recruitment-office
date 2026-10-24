@@ -1,5 +1,6 @@
 import "./globals.css";
 import "./visual-effects.css";
+import "./application-tracker.css";
 import NotificationCenter from "../components/NotificationCenter";
 
 export const metadata = {
@@ -17,6 +18,7 @@ export default function RootLayout({ children }) {
           </a>
           <nav className="main-nav" aria-label="Main navigation">
             <a href="/matches">Find jobs</a>
+            <a href="/applications">My applications</a>
             <a href="/employer">For employers</a>
             <a href="/profile">My profile</a>
           </nav>
