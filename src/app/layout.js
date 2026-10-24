@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./visual-effects.css";
 import NotificationCenter from "../components/NotificationCenter";
 
 export const metadata = {
