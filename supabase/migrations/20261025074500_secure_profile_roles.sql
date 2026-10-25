@@ -23,7 +23,7 @@ begin
     new.id,
     new.email,
     coalesce(nullif(trim(new.raw_user_meta_data->>'first_name'), ''), case when v_full_name is not null then split_part(v_full_name, ' ', 1) else null end),
-    coalesce(nullif(trim(new.raw_user_meta_data->>'last_name'), ''), case when v_full_name is not null then nullif(trim(regexp_replace(v_full_name, '^\\S+\\s*', '')), '') else null end),
+    coalesce(nullif(trim(new.raw_user_meta_data->>'last_name'), ''), case when v_full_name is not null and position(' ' in v_full_name) > 0 then nullif(trim(substr(v_full_name, position(' ' in v_full_name) + 1)), '') else null end),
     v_role
   )
   on conflict (id) do nothing;
