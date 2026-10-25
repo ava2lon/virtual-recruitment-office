@@ -22,5 +22,7 @@ jobs:
           node-version: 20
       - name: Install dependencies
         run: npm install
+      - name: Run database security regression checks
+        run: npm run test:security
       - name: Build Next.js application
         run: npm run build
