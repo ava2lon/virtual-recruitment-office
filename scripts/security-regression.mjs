@@ -15,9 +15,9 @@ const migrations = Object.fromEntries(
 
 function functionBody(sourceName, functionName) {
   const source = migrations[sourceName];
-  assert.ok(source, \`Missing migration source: \${sourceName}\`);
-  const start = source.indexOf(\`create or replace function public.\${functionName}(\`);
-  assert.notEqual(start, -1, \`Missing function definition: \${functionName} in \${sourceName}\`);
+  assert.ok(source, "Missing migration source: " + sourceName);
+  const start = source.indexOf("create or replace function public." + functionName + "(");
+  assert.notEqual(start, -1, "Missing function definition: " + functionName + " in " + sourceName);
   const next = source.indexOf("\ncreate or replace function public.", start + 1);
   return source.slice(start, next === -1 ? source.length : next);
 }
@@ -84,13 +84,13 @@ let count = 0;
 for (const check of checks) {
   const body = functionBody(check.source, check.name);
   for (const [pattern, message] of check.assertions) {
-    assert.match(body, pattern, \`\${check.name} \${message}\`);
+    assert.match(body, pattern, check.name + " " + message);
     count += 1;
   }
   for (const [pattern, message] of check.forbidden || []) {
-    assert.doesNotMatch(body, pattern, \`\${check.name} \${message}\`);
+    assert.doesNotMatch(body, pattern, check.name + " " + message);
     count += 1;
   }
-  console.log(\`PASS \${check.name}\`);
+  console.log("PASS " + check.name);
 }
-console.log(\`Security regression checks passed: \${count}\`);
+console.log("Security regression checks passed: " + count);
