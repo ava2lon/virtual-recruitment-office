@@ -78,7 +78,7 @@ const checks = [
       [/insert into public\.interviews/i, "must create the interview only after authorization checks"],
       [/update public\.applications[\s\S]*?where id = p_application_id/i, "must update the application linked to the authorized interview"],
       [/insert into public\.audit_logs/i, "must audit interview scheduling"],
-      [/jsonb_build_object\([\\s\\S]*?'application_id'[\\s\\S]*?'scheduled_at'/i, "must record the application and schedule in audit metadata"],
+      [/jsonb_build_object\([\s\S]*?'application_id'[\s\S]*?'scheduled_at'/i, "must record the application and schedule in audit metadata"],
     ],
   },
 ];
