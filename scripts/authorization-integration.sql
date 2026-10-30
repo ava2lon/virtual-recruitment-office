@@ -116,6 +116,16 @@ begin
     raise exception 'FAIL: employer company creation did not create owner membership';
   end if;
 
+  -- Anonymous caller cannot create a company.
+  perform set_config('request.jwt.claim.sub','',true);
+  begin
+    perform public.employer_create_company('Anonymous',null,null,null,null);
+    raise exception 'FAIL: anonymous caller unexpectedly created a company';
+  exception when others then
+    if sqlerrm like 'FAIL:%' then raise; end if;
+    if sqlerrm not like '%unauthorized%' then raise; end if;
+  end;
+
   -- Candidate cannot create a company.
   perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',true);
   begin
@@ -134,6 +144,16 @@ begin
   begin
     perform public.employer_create_job('10000000-0000-0000-0000-000000000001','Forbidden','No membership');
     raise exception 'FAIL: non-member unexpectedly created a job';
+  exception when others then
+    if sqlerrm like 'FAIL:%' then raise; end if;
+    if sqlerrm not like '%forbidden%' then raise; end if;
+  end;
+
+  -- Employer cannot call the recruiter-only scheduling RPC.
+  perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
+  begin
+    perform public.recruiter_schedule_interview('40000000-0000-0000-0000-000000000001','Employer',now(),null);
+    raise exception 'FAIL: employer unexpectedly scheduled an interview';
   exception when others then
     if sqlerrm like 'FAIL:%' then raise; end if;
     if sqlerrm not like '%forbidden%' then raise; end if;
