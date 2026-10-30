@@ -44,6 +44,6 @@ jobs:
       - name: Run isolated authorization integration tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
-        run: psql "$DATABASE_URL" --set ON_ERROR_STOP=1 --file scripts/authorization-integration.sql
+        run: npm run test:authorization
       - name: Build Next.js application
         run: npm run build
