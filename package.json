@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:security": "node scripts/security-regression.mjs"
+    "test:security": "node scripts/security-regression.mjs",
+    "test:authorization": "psql \"$DATABASE_URL\" --set ON_ERROR_STOP=1 --file scripts/authorization-integration.sql"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.75.0",
