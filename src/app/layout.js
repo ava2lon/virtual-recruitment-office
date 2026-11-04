@@ -12,6 +12,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
+        <a className="skip-link" href="#main-content">Skip to main content</a>
         <header className="site-header">
           <a className="brand" href="/" aria-label="WorkBridge home">
             <span className="brand-mark">W</span><span>workbridge</span>
@@ -28,7 +29,7 @@ export default function RootLayout({ children }) {
             <a className="button button-small" href="/signup">Get started</a>
           </div>
         </header>
-        <main>{children}</main>
+        <main id="main-content">{children}</main>
         <footer className="site-footer">
           <a className="brand brand-footer" href="/"><span className="brand-mark">W</span><span>workbridge</span></a>
           <p>One platform. Zero friction. One connection.</p>

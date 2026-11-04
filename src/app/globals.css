@@ -371,3 +371,6 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
     transition-duration: .01ms !important;
   }
 }
+
+.skip-link{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;}
+.skip-link:focus{position:fixed;top:1rem;left:1rem;width:auto;height:auto;padding:.5rem 1rem;background:#111;color:#fff;z-index:1000;border-radius:.5rem;}
