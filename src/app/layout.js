@@ -7,6 +7,12 @@ import NotificationCenter from "../components/NotificationCenter";
 export const metadata = {
   title: "WorkBridge — One platform. Zero friction.",
   description: "A smarter connection between talent and opportunity.",
+  openGraph: {
+    title: "WorkBridge — One platform. Zero friction.",
+    description: "A smarter connection between talent and opportunity.",
+    images: ["/api/og?title=WorkBridge"],
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }) {
@@ -23,6 +29,7 @@ export default function RootLayout({ children }) {
             <a href="/applications">My applications</a>
             <a href="/analytics">Analytics</a>
             <a href="/employer">For employers</a>
+            <a href="/employer/pipeline">Pipeline</a>
             <a href="/profile">My profile</a>
           </nav>
           <div className="header-actions">
