@@ -4,6 +4,7 @@ import "./visual-effects.css";
 import "./application-tracker.css";
 import NotificationCenter from "../components/NotificationCenter";
 import ThemeToggle from "../components/ThemeToggle";
+import CommandPalette from "../components/CommandPalette";
 
 export const metadata = {
   title: "WorkBridge — One platform. Zero friction.",
@@ -41,6 +42,7 @@ export default function RootLayout({ children }) {
           </div>
         </header>
         <main id="main-content">{children}</main>
+        <CommandPalette />
         <footer className="site-footer">
           <a className="brand brand-footer" href="/"><span className="brand-mark">W</span><span>workbridge</span></a>
           <p>One platform. Zero friction. One connection.</p>
