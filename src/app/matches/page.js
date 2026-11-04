@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { getSupabase } from "../../lib/supabase";
+import { useDebounce } from "../../lib/useDebounce";
 
 export default function MatchesPage() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounce(query, 250);
 
   useEffect(() => {
     let active = true;
@@ -30,6 +33,15 @@ export default function MatchesPage() {
     return () => { active = false; };
   }, []);
 
+  const q = debouncedQuery.trim().toLowerCase();
+  const filtered = q
+    ? jobs.filter((job) => {
+        const company = Array.isArray(job.companies) ? job.companies[0] : job.companies;
+        return [job.job_title, company?.company_name, job.location, job.employment_type]
+          .some((v) => String(v || "").toLowerCase().includes(q));
+      })
+    : jobs;
+
   return (
     <section className="page-shell">
       <div className="page-intro">
@@ -39,11 +51,19 @@ export default function MatchesPage() {
       </div>
       <div className="list-toolbar">
         <div><strong>Open opportunities</strong><p>Recently published roles</p></div>
-        <span className="count-pill">{jobs.length} listed</span>
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search roles, companies, locations…"
+          aria-label="Search opportunities"
+          style={{ padding: "0.5rem 0.75rem", borderRadius: "var(--wb-radius-md)", border: "1px solid var(--wb-color-border)", background: "var(--wb-color-bg)", color: "var(--wb-color-text)", font: "inherit", minWidth: "240px" }}
+        />
+        <span className="count-pill">{filtered.length} listed</span>
       </div>
-      {loading ? <div className="empty-state">Loading opportunities…</div> : message ? <div className="notice">{message}</div> : jobs.length ? (
+      {loading ? <div className="empty-state">Loading opportunities…</div> : message ? <div className="notice">{message}</div> : filtered.length ? (
         <div className="job-list">
-          {jobs.map(job => {
+          {filtered.map(job => {
             const company = Array.isArray(job.companies) ? job.companies[0] : job.companies;
             return (
               <article className="job-card" id={job.id} key={job.id}>
@@ -63,9 +83,8 @@ export default function MatchesPage() {
       ) : (
         <div className="empty-state">
           <span className="empty-symbol">✳</span>
-          <h2>Your next opportunity starts here.</h2>
-          <p>No open vacancies are available to display right now. Check back soon, or create an account to build your profile.</p>
-          <a className="button" href="/signup">Create your profile</a>
+          <h2>No matching opportunities.</h2>
+          <p>Try a different search term, or check back soon.</p>
         </div>
       )}
     </section>
