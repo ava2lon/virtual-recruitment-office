@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./design-tokens.css";
 import "./visual-effects.css";
 import "./application-tracker.css";
 import NotificationCenter from "../components/NotificationCenter";
@@ -20,6 +21,7 @@ export default function RootLayout({ children }) {
           <nav className="main-nav" aria-label="Main navigation">
             <a href="/matches">Find jobs</a>
             <a href="/applications">My applications</a>
+            <a href="/analytics">Analytics</a>
             <a href="/employer">For employers</a>
             <a href="/profile">My profile</a>
           </nav>

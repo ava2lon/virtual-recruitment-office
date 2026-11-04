@@ -1,0 +1,97 @@
+:root {
+  --wb-color-bg: #ffffff;
+  --wb-color-surface: #f7f8fa;
+  --wb-color-text: #0f172a;
+  --wb-color-muted: #475569;
+  --wb-color-primary: #2563eb;
+  --wb-color-primary-contrast: #ffffff;
+  --wb-color-border: #e2e8f0;
+  --wb-color-success: #16a34a;
+  --wb-color-warning: #d97706;
+  --wb-color-danger: #dc2626;
+  --wb-radius-sm: 0.375rem;
+  --wb-radius-md: 0.75rem;
+  --wb-radius-lg: 1rem;
+  --wb-space-1: 0.25rem;
+  --wb-space-2: 0.5rem;
+  --wb-space-3: 0.75rem;
+  --wb-space-4: 1rem;
+  --wb-space-6: 1.5rem;
+  --wb-space-8: 2rem;
+  --wb-font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --wb-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --wb-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --wb-color-bg: #0b1220;
+    --wb-color-surface: #111a2e;
+    --wb-color-text: #e2e8f0;
+    --wb-color-muted: #94a3b8;
+    --wb-color-border: #1e293b;
+    --wb-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --wb-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  }
+}
+
+.wb-card {
+  background: var(--wb-color-surface);
+  border: 1px solid var(--wb-color-border);
+  border-radius: var(--wb-radius-lg);
+  box-shadow: var(--wb-shadow-sm);
+  padding: var(--wb-space-6);
+}
+
+.wb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--wb-space-2);
+  padding: var(--wb-space-2) var(--wb-space-4);
+  border-radius: var(--wb-radius-md);
+  border: 1px solid var(--wb-color-border);
+  background: var(--wb-color-bg);
+  color: var(--wb-color-text);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.wb-btn:hover { background: var(--wb-color-surface); }
+.wb-btn:active { transform: translateY(1px); }
+.wb-btn--primary {
+  background: var(--wb-color-primary);
+  color: var(--wb-color-primary-contrast);
+  border-color: var(--wb-color-primary);
+}
+.wb-btn--primary:hover { filter: brightness(1.05); }
+
+.wb-grid {
+  display: grid;
+  gap: var(--wb-space-4);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.wb-stat {
+  background: var(--wb-color-surface);
+  border: 1px solid var(--wb-color-border);
+  border-radius: var(--wb-radius-md);
+  padding: var(--wb-space-4);
+}
+.wb-stat__value { font-size: 1.75rem; font-weight: 700; color: var(--wb-color-primary); }
+.wb-stat__label { color: var(--wb-color-muted); font-size: 0.875rem; }
+
+.wb-bar {
+  height: 0.5rem;
+  background: var(--wb-color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.wb-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--wb-color-primary);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
