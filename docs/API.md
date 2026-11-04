@@ -15,6 +15,12 @@
 - Body: `{ event: string, idempotencyKey?: string, payload?: object }`
 - Returns `202 { ok, received, event, idempotencyKey }`.
 
+## Dead-letter recording
+- `POST /api/n8n/dead-letter`
+- Headers: `x-workbridge-secret: <WORKBRIDGE_N8N_INBOUND_SECRET>`
+- Body: `{ event: string, idempotencyKey?: string, payload?: object, error?: string }`
+- Returns `202 { ok, recorded, event, receivedAt }`.
+
 ## Conventions
 - All timestamps ISO-8601 UTC.
 - Idempotency keys are caller-generated UUIDs; retries must reuse the same key.
