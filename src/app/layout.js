@@ -33,6 +33,7 @@ export default function RootLayout({ children }) {
             <a href="/employer">For employers</a>
             <a href="/employer/pipeline">Pipeline</a>
             <a href="/profile">My profile</a>
+            <a href="/settings">Settings</a>
           </nav>
           <div className="header-actions">
             <NotificationCenter />
