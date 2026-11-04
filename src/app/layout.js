@@ -29,6 +29,7 @@ export default function RootLayout({ children }) {
           <nav className="main-nav" aria-label="Main navigation">
             <a href="/matches">Find jobs</a>
             <a href="/applications">My applications</a>
+            <a href="/messages">Messages</a>
             <a href="/analytics">Analytics</a>
             <a href="/employer">For employers</a>
             <a href="/employer/pipeline">Pipeline</a>
