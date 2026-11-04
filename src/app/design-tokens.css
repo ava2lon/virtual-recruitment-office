@@ -95,3 +95,20 @@
   border-radius: 999px;
   transition: width 0.3s ease;
 }
+
+html[data-theme="dark"] {
+  --wb-color-bg: #0b1220;
+  --wb-color-surface: #111a2e;
+  --wb-color-text: #e2e8f0;
+  --wb-color-muted: #94a3b8;
+  --wb-color-border: #1e293b;
+  --wb-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --wb-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+html[data-theme="light"] {
+  --wb-color-bg: #ffffff;
+  --wb-color-surface: #f7f8fa;
+  --wb-color-text: #0f172a;
+  --wb-color-muted: #475569;
+  --wb-color-border: #e2e8f0;
+}

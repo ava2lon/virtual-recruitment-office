@@ -3,6 +3,7 @@ import "./design-tokens.css";
 import "./visual-effects.css";
 import "./application-tracker.css";
 import NotificationCenter from "../components/NotificationCenter";
+import ThemeToggle from "../components/ThemeToggle";
 
 export const metadata = {
   title: "WorkBridge — One platform. Zero friction.",
@@ -34,6 +35,7 @@ export default function RootLayout({ children }) {
           </nav>
           <div className="header-actions">
             <NotificationCenter />
+            <ThemeToggle />
             <a className="login-link" href="/login">Log in</a>
             <a className="button button-small" href="/signup">Get started</a>
           </div>
