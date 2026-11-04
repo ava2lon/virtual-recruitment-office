@@ -27,6 +27,7 @@ export default function HeaderNav() {
           <a href="/employer/pipeline">Pipeline</a>
           <a href="/profile">My profile</a>
           <a href="/settings">Settings</a>
+          <a href="/security/passkeys">Passkeys</a>
         </>
       )}
     </nav>

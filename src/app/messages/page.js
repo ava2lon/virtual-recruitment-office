@@ -54,7 +54,21 @@ export default function MessagesPage() {
   }, [api]);
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
-  useEffect(() => { if (activeId) loadMessages(activeId); }, [activeId, loadMessages]);
+  useEffect(() => {
+    if (!activeId) return;
+    loadMessages(activeId);
+    const supabase = getSupabase();
+    const channel = supabase
+      .channel("messages:" + activeId)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: "conversation_id=eq." + activeId }, (payload) => {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === payload.new.id)) return prev;
+          return [...prev, payload.new];
+        });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [activeId, loadMessages]);
 
   async function send() {
     if (!draft.trim() || !activeId) return;
