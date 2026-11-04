@@ -13,6 +13,7 @@ export default function MessagesPage() {
   const [error, setError] = useState("");
   const [token, setToken] = useState("");
   const [typingUsers, setTypingUsers] = useState([]);
+  const [readReceipts, setReadReceipts] = useState({});
 
   const api = useCallback(async (path, options = {}) => {
     const supabase = getSupabase();
@@ -49,6 +50,15 @@ export default function MessagesPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "load_failed");
       setMessages(data.messages || []);
+      // fetch read receipts
+      const supabase = getSupabase();
+      const { data: session } = await supabase.auth.getSession();
+      const t = session?.session?.access_token;
+      const r = await fetch("/api/messages/" + id + "/read", { headers: { Authorization: "Bearer " + t } });
+      if (r.ok) {
+        const rd = await r.json();
+        setReadReceipts(rd.reads || {});
+      }
     } catch (e) {
       setError(e.message || "Could not load messages.");
     }
@@ -75,6 +85,9 @@ export default function MessagesPage() {
         });
         setTypingUsers(Array.from(new Set(typing)));
       })
+      .on("broadcast", { event: "read" }, ({ payload }) => {
+        setReadReceipts((prev) => ({ ...prev, [payload.user]: payload.at }));
+      })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
           await channel.track({ user: token || "anon", typing: false, online_at: new Date().toISOString() });
@@ -92,6 +105,9 @@ export default function MessagesPage() {
       if (!res.ok) throw new Error(data.error || "send_failed");
       setDraft("");
       await loadMessages(activeId);
+      const supabase2 = getSupabase();
+      const ch2 = supabase2.channel("presence:" + activeId);
+      ch2.send({ type: "broadcast", event: "read", payload: { user: token || "anon", at: new Date().toISOString() } }).catch(() => {});
     } catch (e) {
       setError(e.message || "Could not send message.");
     } finally {
@@ -153,6 +169,11 @@ export default function MessagesPage() {
                   </div>
                 ))}
               </div>
+              {Object.keys(readReceipts).length > 0 && (
+                <div style={{ fontSize: "0.75rem", color: "var(--wb-color-muted)", textAlign: "right", marginTop: "0.25rem" }}>
+                  Read {Object.values(readReceipts).length > 1 ? "by all" : ""}
+                </div>
+              )}
               {typingUsers.length > 0 && <div style={{ fontSize: "0.8rem", color: "var(--wb-color-muted)", fontStyle: "italic" }}>{typingUsers.join(", ")} {typingUsers.length === 1 ? "is" : "are"} typing…</div>}
               <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
                 <input
