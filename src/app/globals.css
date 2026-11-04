@@ -374,3 +374,31 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
 
 .skip-link{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;}
 .skip-link:focus{position:fixed;top:1rem;left:1rem;width:auto;height:auto;padding:.5rem 1rem;background:#111;color:#fff;z-index:1000;border-radius:.5rem;}
+
+html[data-theme="dark"]{
+  --ink:#e6f0ec;
+  --muted:#9ab0a8;
+  --paper:#0e1a16;
+  --green:#4ade80;
+  --green-dark:#22c55e;
+  --lime:#a3e635;
+  --line:#1f3329;
+  --white:#1a2922;
+  --soft:#16231d;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ink:#e6f0ec;--muted:#9ab0a8;--paper:#0e1a16;--green:#4ade80;--green-dark:#22c55e;--lime:#a3e635;--line:#1f3329;--white:#1a2922;--soft:#16231d;
+  }
+}
+
+html[data-theme="dark"] body{background:var(--paper);color:var(--ink)}
+html[data-theme="dark"] .feature-card,
+html[data-theme="dark"] .floating-card,
+html[data-theme="dark"] .job-card,
+html[data-theme="dark"] .auth-panel,
+html[data-theme="dark"] .auth-aside,
+html[data-theme="dark"] .notice,
+html[data-theme="dark"] .empty-state{background:var(--white);border-color:var(--line);color:var(--ink)}
+html[data-theme="dark"] .button-secondary{border-color:var(--line);color:var(--ink)}
+html[data-theme="dark"] input,html[data-theme="dark"] textarea,html[data-theme="dark"] select{background:var(--soft);color:var(--ink);border-color:var(--line)}

@@ -4,6 +4,7 @@ import "./visual-effects.css";
 import "./application-tracker.css";
 import NotificationCenter from "../components/NotificationCenter";
 import ThemeToggle from "../components/ThemeToggle";
+import HeaderNav from "../components/HeaderNav";
 import CommandPalette from "../components/CommandPalette";
 
 export const metadata = {
@@ -26,17 +27,7 @@ export default function RootLayout({ children }) {
           <a className="brand" href="/" aria-label="WorkBridge home">
             <span className="brand-mark">W</span><span>workbridge</span>
           </a>
-          <nav className="main-nav" aria-label="Main navigation">
-            <a href="/matches">Find jobs</a>
-            <a href="/applications">My applications</a>
-            <a href="/messages">Messages</a>
-            <a href="/analytics">Analytics</a>
-            <a href="/employer">For employers</a>
-            <a href="/employer/pipeline">Pipeline</a>
-            <a href="/profile">My profile</a>
-            <a href="/settings">Settings</a>
-            <a href="/security/mfa">MFA</a>
-          </nav>
+          <HeaderNav />
           <div className="header-actions">
             <NotificationCenter />
             <ThemeToggle />
