@@ -112,3 +112,6 @@ html[data-theme="light"] {
   --wb-color-muted: #475569;
   --wb-color-border: #e2e8f0;
 }
+
+.wb-skeleton{background:linear-gradient(90deg,var(--wb-color-border) 25%,var(--wb-color-surface) 50%,var(--wb-color-border) 75%);background-size:200% 100%;animation:wb-shimmer 1.4s infinite;border-radius:var(--wb-radius-sm);}
+@keyframes wb-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
