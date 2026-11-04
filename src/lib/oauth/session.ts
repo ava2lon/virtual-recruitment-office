@@ -49,3 +49,26 @@ export function clearSessionCookieHeader(): string {
 }
 
 export { SESSION_COOKIE };
+
+// --- Refresh token helpers ---
+const REFRESH_COOKIE = "wb_refresh";
+const REFRESH_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
+
+export function issueRefreshToken(): string {
+  return crypto.randomBytes(48).toString("base64url");
+}
+
+export function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+export function refreshCookieHeader(token: string): string {
+  const secure = process.env.NODE_ENV === "production" ? "Secure; " : "";
+  return `${REFRESH_COOKIE}=${token}; Path=/; HttpOnly; ${secure}SameSite=Lax; Max-Age=${REFRESH_TTL_SECONDS}`;
+}
+
+export function clearRefreshCookieHeader(): string {
+  return `${REFRESH_COOKIE}=; Path=/; HttpOnly; Max-Age=0; SameSite=Lax`;
+}
+
+export { REFRESH_COOKIE, REFRESH_TTL_SECONDS };

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyState } from "../../../../../lib/oauth/state";
 import { exchangeCodeForTokens, fetchProviderProfile } from "../../../../../lib/oauth/providers";
-import { issueSessionToken, sessionCookieHeader } from "../../../../../lib/oauth/session";
+import { issueSessionToken, sessionCookieHeader, issueRefreshToken, hashToken, refreshCookieHeader } from "../../../../../lib/oauth/session";
 import { getSupabaseAdmin } from "../../../../../lib/supabaseAdmin";
 import type { OAuthProvider, DbUser } from "../../../../../types/oauth";
 
@@ -148,10 +148,24 @@ export async function GET(
       // Case 3: proceed.
     }
 
-    // Issue session.
+    // Issue session + refresh token (rotation-ready).
     const token = issueSessionToken(user.id, user.email);
+    const refreshToken = issueRefreshToken();
+    try {
+      const supabase = getSupabaseAdmin();
+      await supabase.from("user_sessions").insert({
+        user_id: user.id,
+        refresh_token_hash: hashToken(refreshToken),
+        user_agent: request.headers.get("user-agent") || null,
+        ip_address: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null,
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      });
+    } catch {
+      // Non-fatal: session still issued.
+    }
     const response = NextResponse.redirect(new URL("/dashboard", origin));
-    response.headers.set("Set-Cookie", sessionCookieHeader(token));
+    response.headers.append("Set-Cookie", sessionCookieHeader(token));
+    response.headers.append("Set-Cookie", refreshCookieHeader(refreshToken));
     // Clear oauth cookies.
     response.cookies.set("wb_oauth_verifier", "", { path: "/", maxAge: 0 });
     response.cookies.set("wb_oauth_state", "", { path: "/", maxAge: 0 });
