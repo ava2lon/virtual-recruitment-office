@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
+import { rateLimit, clientKey } from "../../../../lib/rateLimit";
 
 export const runtime = "nodejs";
 
+function limited(request) {
+  const result = rateLimit("n8n-events:" + clientKey(request), { limit: 60, windowMs: 60_000 });
+  if (!result.allowed) return NextResponse.json({ error: "Too many requests." }, { status: 429 });
+  return null;
+}
+
 export async function POST(request) {
+  const limitedResponse = limited(request);
+  if (limitedResponse) return limitedResponse;
   const secret = process.env.WORKBRIDGE_N8N_INBOUND_SECRET;
   if (!secret) {
     return NextResponse.json({ error: "Inbound automation is not configured." }, { status: 503 });
