@@ -12,6 +12,7 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [token, setToken] = useState("");
+  const [typingUsers, setTypingUsers] = useState([]);
 
   const api = useCallback(async (path, options = {}) => {
     const supabase = getSupabase();
@@ -59,16 +60,28 @@ export default function MessagesPage() {
     loadMessages(activeId);
     const supabase = getSupabase();
     const channel = supabase
-      .channel("messages:" + activeId)
+      .channel("presence:" + activeId, { config: { presence: { key: token || "anon" } } })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: "conversation_id=eq." + activeId }, (payload) => {
         setMessages((prev) => {
           if (prev.some((m) => m.id === payload.new.id)) return prev;
           return [...prev, payload.new];
         });
       })
-      .subscribe();
+      .on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+        const typing = [];
+        Object.keys(state).forEach((key) => {
+          (state[key] || []).forEach((p) => { if (p.typing && p.user !== (token || "anon")) typing.push(p.user || "Someone"); });
+        });
+        setTypingUsers(Array.from(new Set(typing)));
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await channel.track({ user: token || "anon", typing: false, online_at: new Date().toISOString() });
+        }
+      });
     return () => { supabase.removeChannel(channel); };
-  }, [activeId, loadMessages]);
+  }, [activeId, loadMessages, token]);
 
   async function send() {
     if (!draft.trim() || !activeId) return;
@@ -140,10 +153,16 @@ export default function MessagesPage() {
                   </div>
                 ))}
               </div>
+              {typingUsers.length > 0 && <div style={{ fontSize: "0.8rem", color: "var(--wb-color-muted)", fontStyle: "italic" }}>{typingUsers.join(", ")} {typingUsers.length === 1 ? "is" : "are"} typing…</div>}
               <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
                 <input
                   value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
+                  onChange={(e) => {
+                    setDraft(e.target.value);
+                    const supabase = getSupabase();
+                    const ch = supabase.channel("presence:" + activeId);
+                    ch.track({ user: token || "anon", typing: e.target.value.length > 0, online_at: new Date().toISOString() }).catch(() => {});
+                  }}
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
                   placeholder="Type a message…"
                   style={{ flex: 1, padding: "0.5rem 0.75rem", borderRadius: "var(--wb-radius-md)", border: "1px solid var(--wb-color-border)", background: "var(--wb-color-bg)", color: "var(--wb-color-text)", font: "inherit" }}
