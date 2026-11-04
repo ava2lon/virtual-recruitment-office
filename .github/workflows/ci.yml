@@ -32,9 +32,11 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
       - name: Run database security regression checks
         run: npm run test:security
       - name: Install PostgreSQL client

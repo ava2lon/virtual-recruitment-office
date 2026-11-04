@@ -18,7 +18,7 @@ export async function POST(request) {
   if (!token) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
 
   let payload;
