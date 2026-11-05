@@ -49,7 +49,9 @@ export async function POST(request: Request) {
     const saml = createSamlClient(origin);
     const result = await saml.validatePostResponseAsync({ SAMLResponse: samlResponse });
     profile = result.profile;
-    if (!profile) throw new Error("Missing SAML profile");
+    if (!profile || profile.issuer !== config.idpEntityId) {
+      throw new Error("SAML identity provider issuer mismatch");
+    }
   } catch {
     const response = NextResponse.redirect(new URL("/login?error=saml_validation_failed", origin));
     response.cookies.set("wb_saml_state", "", { path: "/api/auth/saml/acs", maxAge: 0 });
