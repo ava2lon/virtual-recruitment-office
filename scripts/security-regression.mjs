@@ -174,7 +174,25 @@ assert.doesNotMatch(orgMigration, /create policy if not exists/i, "organization 
 const calendarMigration = readFileSync(new URL("../supabase/migrations/202611130002_calendar_connections.sql", import.meta.url), "utf8");
 assert.match(calendarMigration, /revoke all on public\.user_calendar_connections from public, anon, authenticated/i, "OAuth tokens must not be readable through the client Data API");
 assert.match(calendarMigration, /grant all on public\.user_calendar_connections to service_role/i, "OAuth token storage must be server-only");
-count += 33;
+const webauthnMigration = readFileSync(new URL("../supabase/migrations/202611140001_webauthn_one_time_challenges.sql", import.meta.url), "utf8");
+assert.match(webauthnMigration, /challenge_hash text not null unique/i, "WebAuthn challenges must be stored by unique hash");
+assert.match(webauthnMigration, /consumed_at timestamptz/i, "WebAuthn challenges must track one-time consumption");
+assert.match(webauthnMigration, /revoke all on public\.webauthn_challenges from public, anon, authenticated/i, "WebAuthn challenge storage must be server-only");
+const registerOptionsSource = readFileSync(new URL("../src/app/api/auth/webauthn/register/options/route.ts", import.meta.url), "utf8");
+const registerVerifySource = readFileSync(new URL("../src/app/api/auth/webauthn/register/verify/route.ts", import.meta.url), "utf8");
+const authOptionsSource = readFileSync(new URL("../src/app/api/auth/webauthn/authenticate/options/route.ts", import.meta.url), "utf8");
+const authVerifySource = readFileSync(new URL("../src/app/api/auth/webauthn/authenticate/verify/route.ts", import.meta.url), "utf8");
+for (const [source, label] of [[registerOptionsSource,"registration options"],[registerVerifySource,"registration verification"]]) {
+  assert.match(source, /getSessionFromRequest\(request\)/, `WebAuthn ${label} must verify the signed application session`);
+}
+for (const [source, label] of [[registerOptionsSource,"registration options"],[registerVerifySource,"registration verification"],[authOptionsSource,"authentication options"],[authVerifySource,"authentication verification"]]) {
+  assert.match(source, /webauthn_challenges/, `WebAuthn ${label} must use persisted one-time challenges`);
+  assert.match(source, /hashToken\(/, `WebAuthn ${label} must persist only a challenge hash`);
+}
+assert.match(registerVerifySource, /\.is\("consumed_at", null\)/, "registration challenge must be consumed once");
+assert.match(authVerifySource, /\.is\("consumed_at", null\)/, "authentication challenge must be consumed once");
+assert.match(authVerifySource, /credential_counter_conflict/, "authenticator counters must use optimistic concurrency control");
+count += 15;
 
 const refreshSource = readFileSync(new URL("../src/app/api/auth/refresh/route.ts", import.meta.url), "utf8");
 assert.match(refreshSource, /insertError/, "refresh rotation must check token persistence errors");
