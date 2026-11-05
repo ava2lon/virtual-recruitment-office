@@ -33,12 +33,20 @@ grant execute on function public.is_org_member(uuid) to authenticated;
 drop policy if exists "jobs read by org members" on public.jobs;
 create policy "jobs read by org members" on public.jobs
   for select to authenticated using (
-    organization_id is null or public.is_org_member(organization_id)
+    organization_id is not null and public.is_org_member(organization_id)
   );
 
 -- Applications: scope by org.
 drop policy if exists "applications read by org members" on public.applications;
 create policy "applications read by org members" on public.applications
   for select to authenticated using (
-    organization_id is null or public.is_org_member(organization_id)
+    organization_id is not null and public.is_org_member(organization_id)
+  );
+
+-- Organization-scoped conversations are readable by members of that organization.
+-- Unscoped legacy conversations remain governed by participant-level policies.
+drop policy if exists "conversations read by org members" on public.conversations;
+create policy "conversations read by org members" on public.conversations
+  for select to authenticated using (
+    organization_id is not null and public.is_org_member(organization_id)
   );
