@@ -42,6 +42,8 @@ export default function EmployerPage() {
   const previewReadOnly = process.env.NEXT_PUBLIC_WORKBRIDGE_PREVIEW_READONLY === "true";
   const [user, setUser] = useState(null);
   const [companies, setCompanies] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
+  const [organizationId, setOrganizationId] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [jobs, setJobs] = useState([]);
   const [applications, setApplications] = useState([]);
@@ -83,6 +85,9 @@ export default function EmployerPage() {
     if (companiesError) throw companiesError;
     const availableCompanies = companyRows || [];
     setCompanies(availableCompanies);
+    const { data: orgRows } = await supabase.from("organizations").select("id,name,slug").order("name");
+    setOrganizations(orgRows || []);
+    if (orgRows?.length && !organizationId) setOrganizationId(orgRows[0].id);
     const selectedId = ids.includes(companyId) ? companyId : (availableCompanies[0]?.id || ids[0]);
     setCompanyId(selectedId);
 
@@ -126,6 +131,7 @@ export default function EmployerPage() {
       const supabase = getSupabase();
       const { data, error } = await supabase.from("jobs").insert({
         company_id: companyId,
+        organization_id: organizationId || null,
         job_title: title.trim(),
         location: location.trim() || null,
         employment_type: employmentType,
@@ -254,6 +260,7 @@ export default function EmployerPage() {
             <label>Location<input value={location} onChange={event => setLocation(event.target.value)} placeholder="Remote or city, country" /></label>
             <label>Employment type<select value={employmentType} onChange={event => setEmploymentType(event.target.value)}><option>Full-time</option><option>Part-time</option><option>Contract</option><option>Internship</option><option>Temporary</option></select></label>
             <label>Required skills <small>Optional; separate skills with commas.</small><input value={requiredSkills} onChange={event => setRequiredSkills(event.target.value)} placeholder="Customer service, communication" /></label>
+            {organizations.length > 0 && <label>Organization <select value={organizationId} onChange={event => setOrganizationId(event.target.value)}>{organizations.map(org => <option key={org.id} value={org.id}>{org.name}</option>)}</select></label>}
             <label>Role description<textarea rows={5} value={description} onChange={event => setDescription(event.target.value)} placeholder="Responsibilities, requirements, and what success looks like…" required /></label>
             <button className="button" disabled={previewReadOnly || busy || !user || !companyId}>{previewReadOnly ? "Publishing disabled in preview" : busy ? "Publishing…" : "Publish vacancy"}</button>
           </form>
