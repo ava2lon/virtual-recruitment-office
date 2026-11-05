@@ -236,4 +236,25 @@ for (const name of [
   count += 1;
 }
 
+
+const n8nAuthSource = readFileSync(new URL("../src/lib/n8nWebhookAuth.js", import.meta.url), "utf8");
+const n8nEventsSource = readFileSync(new URL("../src/app/api/n8n/events/route.js", import.meta.url), "utf8");
+const n8nDeadLetterSource = readFileSync(new URL("../src/app/api/n8n/dead-letter/route.js", import.meta.url), "utf8");
+const n8nReplayMigration = readFileSync(new URL("../supabase/migrations/202611160001_n8n_webhook_replay_protection.sql", import.meta.url), "utf8");
+assert.match(n8nAuthSource, /createHmac\("sha256"/, "n8n callbacks must use HMAC-SHA256 signatures");
+assert.match(n8nAuthSource, /timingSafeEqual/, "n8n signatures must use constant-time comparison");
+assert.match(n8nAuthSource, /MAX_CLOCK_SKEW_SECONDS = 5 \* 60/, "n8n callbacks must enforce a five-minute timestamp window");
+assert.match(n8nAuthSource, /MAX_BODY_BYTES = 256 \* 1024/, "n8n callbacks must enforce a request body size limit");
+assert.match(n8nAuthSource, /n8n_webhook_nonces/, "n8n callbacks must use shared persisted replay protection");
+assert.match(n8nAuthSource, /insertError\.code === "23505"/, "duplicate n8n nonces must be rejected atomically");
+assert.match(n8nAuthSource, /Buffer\.byteLength\(secret, "utf8"\) < 32/, "n8n webhook secrets must contain at least 32 bytes");
+assert.match(n8nEventsSource, /verifyN8nWebhookRequest\(request\)/, "n8n event callbacks must use signed request verification");
+assert.match(n8nDeadLetterSource, /verifyN8nWebhookRequest\(request\)/, "n8n dead-letter callbacks must use signed request verification");
+assert.doesNotMatch(n8nEventsSource + n8nDeadLetterSource, /x-workbridge-secret/, "n8n callbacks must not accept the legacy static secret header");
+assert.match(n8nReplayMigration, /nonce_hash text primary key/i, "n8n nonce storage must enforce uniqueness");
+assert.match(n8nReplayMigration, /enable row level security/i, "n8n nonce storage must enable RLS");
+assert.match(n8nReplayMigration, /revoke all on public\.n8n_webhook_nonces from public, anon, authenticated/i, "n8n nonce storage must be server-only");
+assert.match(n8nReplayMigration, /grant all on public\.n8n_webhook_nonces to service_role/i, "only service_role may manage n8n nonce records");
+count += 14;
+
 console.log("Security regression checks passed: " + count);
