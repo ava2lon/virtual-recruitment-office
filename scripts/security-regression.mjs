@@ -241,6 +241,7 @@ const n8nAuthSource = readFileSync(new URL("../src/lib/n8nWebhookAuth.js", impor
 const n8nEventsSource = readFileSync(new URL("../src/app/api/n8n/events/route.js", import.meta.url), "utf8");
 const n8nDeadLetterSource = readFileSync(new URL("../src/app/api/n8n/dead-letter/route.js", import.meta.url), "utf8");
 const n8nReplayMigration = readFileSync(new URL("../supabase/migrations/202611160001_n8n_webhook_replay_protection.sql", import.meta.url), "utf8");
+const vacancyPublishedSource = readFileSync(new URL("../src/app/api/vacancy-published/route.js", import.meta.url), "utf8");
 assert.match(n8nAuthSource, /createHmac\("sha256"/, "n8n callbacks must use HMAC-SHA256 signatures");
 assert.match(n8nAuthSource, /timingSafeEqual/, "n8n signatures must use constant-time comparison");
 assert.match(n8nAuthSource, /MAX_CLOCK_SKEW_SECONDS = 5 \* 60/, "n8n callbacks must enforce a five-minute timestamp window");
@@ -255,6 +256,9 @@ assert.match(n8nReplayMigration, /nonce_hash text primary key/i, "n8n nonce stor
 assert.match(n8nReplayMigration, /enable row level security/i, "n8n nonce storage must enable RLS");
 assert.match(n8nReplayMigration, /revoke all on public\.n8n_webhook_nonces from public, anon, authenticated/i, "n8n nonce storage must be server-only");
 assert.match(n8nReplayMigration, /grant all on public\.n8n_webhook_nonces to service_role/i, "only service_role may manage n8n nonce records");
-count += 14;
+assert.match(vacancyPublishedSource, /WORKBRIDGE_N8N_INBOUND_SECRET/, "published vacancy callbacks must require the shared n8n secret");
+assert.match(vacancyPublishedSource, /x-workbridge-secret/, "published vacancy callbacks must authenticate to the n8n webhook");
+assert.match(vacancyPublishedSource, /Buffer\.byteLength\(webhookSecret, "utf8"\) < 32/, "published vacancy callbacks must reject weak webhook secrets");
+count += 17;
 
 console.log("Security regression checks passed: " + count);
