@@ -13,6 +13,7 @@
     "storybook": "storybook dev -p 6006"
   },
   "dependencies": {
+    "@node-saml/node-saml": "^5.2.0",
     "@simplewebauthn/browser": "^14.0.0",
     "@simplewebauthn/server": "^14.0.3",
     "@supabase/supabase-js": "2.75.0",

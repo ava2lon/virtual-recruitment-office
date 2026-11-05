@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSamlConfig, parseSamlResponse } from "../../../../../lib/saml";
+import { SAML } from "@node-saml/node-saml";
+import { getSamlConfig } from "../../../../../lib/saml";
 import { getSupabaseAdmin } from "../../../../../lib/supabaseAdmin";
 import { issueSessionToken, sessionCookieHeader } from "../../../../../lib/oauth/session";
 
@@ -14,28 +15,41 @@ export async function POST(request: Request) {
   }
 
   const config = getSamlConfig(origin);
-  if (!config.idpEntityId) {
+  if (!config.idpSsoUrl || !config.idpCert) {
     return NextResponse.redirect(new URL("/login?error=saml_not_configured", origin));
   }
 
-  let assertion;
+  const saml = new SAML({
+    callbackUrl: config.spAcsUrl,
+    entryPoint: config.idpSsoUrl,
+    issuer: config.spEntityId,
+    idpCert: config.idpCert,
+    wantAssertionsSigned: true,
+    wantAuthnResponseSigned: false,
+  });
+
+  let profile: { nameID?: string; email?: string; [key: string]: unknown };
   try {
-    assertion = parseSamlResponse(samlResponse);
-  } catch {
-    return NextResponse.redirect(new URL("/login?error=saml_parse_failed", origin));
+    const { profile: p } = await saml.validatePostResponseAsync({ SAMLResponse: samlResponse });
+    profile = p as { nameID?: string; email?: string; [key: string]: unknown };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "saml_validation_failed";
+    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(msg)}`, origin));
   }
-  if (!assertion.email) {
+
+  const email = (profile.email as string) || (profile.nameID as string) || "";
+  if (!email) {
     return NextResponse.redirect(new URL("/login?error=saml_no_email", origin));
   }
 
   const supabase = getSupabaseAdmin();
-  const { data: existing } = await supabase.from("users").select("*").eq("email", assertion.email).maybeSingle();
+  const { data: existing } = await supabase.from("users").select("*").eq("email", email).maybeSingle();
 
   let user = existing;
   if (!user) {
     const { data: newUser, error } = await supabase
       .from("users")
-      .insert({ email: assertion.email, name: assertion.attributes["displayName"] || assertion.nameId, email_verified: true })
+      .insert({ email, name: (profile.nameID as string) || email, email_verified: true })
       .select("*")
       .single();
     if (error || !newUser) {
