@@ -25,7 +25,7 @@ export async function POST(request) {
   const inviteToken = typeof body?.token === "string" ? body.token : "";
   if (!inviteToken || inviteToken.length > 256) return NextResponse.json({ error: "A valid invite token is required." }, { status: 400 });
   const authenticatedEmail = typeof authData.user.email === "string" ? authData.user.email.trim().toLowerCase() : "";
-  if (!authenticatedEmail) return NextResponse.json({ error: "Your account must have a verified email address." }, { status: 403 });
+  if (!authenticatedEmail || !authData.user.email_confirmed_at) return NextResponse.json({ error: "Your account must have a verified email address." }, { status: 403 });
 
   const { data: invite } = await supabase.from("organization_invites").select("*").eq("token", inviteToken).maybeSingle();
   if (!invite) return NextResponse.json({ error: "Invite not found." }, { status: 404 });
