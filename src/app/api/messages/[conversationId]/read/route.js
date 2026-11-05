@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSessionFromRequest } from "../../../../../../lib/oauth/session";
-import { getSupabaseAdmin } from "../../../../../../lib/supabaseAdmin";
+import { getSessionFromRequest } from "../../../../../lib/oauth/session";
+import { getSupabaseAdmin } from "../../../../../lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 
