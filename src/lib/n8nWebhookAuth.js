@@ -59,11 +59,23 @@ export async function verifyN8nWebhookRequest(request) {
 
   let rawBody;
   try {
-    const bytes = Buffer.from(await request.arrayBuffer());
-    if (bytes.byteLength > MAX_BODY_BYTES) {
-      return failure(413, "Webhook payload is too large.");
+    const reader = request.body?.getReader();
+    if (!reader) {
+      return failure(400, "A valid JSON payload is required.");
     }
-    rawBody = bytes.toString("utf8");
+    const chunks = [];
+    let totalBytes = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_BODY_BYTES) {
+        await reader.cancel();
+        return failure(413, "Webhook payload is too large.");
+      }
+      chunks.push(Buffer.from(value));
+    }
+    rawBody = Buffer.concat(chunks, totalBytes).toString("utf8");
   } catch {
     return failure(400, "A valid JSON payload is required.");
   }
