@@ -9,10 +9,6 @@ create table if not exists public.user_mfa (
 );
 
 alter table public.user_mfa enable row level security;
-
-drop policy if exists "user_mfa read own" on public.user_mfa;
-create policy "user_mfa read own" on public.user_mfa
-  for select to authenticated using (user_id = auth.uid());
-
-revoke all on public.user_mfa from anon, authenticated;
+-- TOTP secrets and recovery hashes are server-only.
+revoke all on public.user_mfa from public, anon, authenticated;
 grant all on public.user_mfa to service_role;
