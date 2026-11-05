@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     });
     response.cookies.set("wb_saml_state", relayState, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       sameSite: "none",
       path: "/api/auth/saml/acs",
       maxAge: 300,
