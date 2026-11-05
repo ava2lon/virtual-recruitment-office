@@ -35,9 +35,7 @@ export async function POST(request: Request) {
     return response;
   }
 
-  // Rotate: revoke old, issue new.
-  await supabase.from("user_sessions").update({ revoked_at: new Date().toISOString() }).eq("id", session.id);
-
+  // Resolve the account before changing the current refresh token.
   const { data: user } = await supabase.from("users").select("id,email").eq("id", session.user_id).maybeSingle();
   if (!user) {
     const response = NextResponse.json({ error: "user_not_found" }, { status: 401 });
@@ -47,13 +45,27 @@ export async function POST(request: Request) {
 
   const newAccessToken = issueSessionToken(user.id, user.email);
   const newRefreshToken = issueRefreshToken();
-  await supabase.from("user_sessions").insert({
+  const { error: insertError } = await supabase.from("user_sessions").insert({
     user_id: user.id,
     refresh_token_hash: hashToken(newRefreshToken),
     user_agent: request.headers.get("user-agent") || null,
     ip_address: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null,
     expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
   });
+  if (insertError) {
+    return NextResponse.json({ error: "refresh_rotation_failed" }, { status: 503 });
+  }
+
+  const { error: revokeError } = await supabase.from("user_sessions")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("id", session.id)
+    .is("revoked_at", null);
+  if (revokeError) {
+    await supabase.from("user_sessions")
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("refresh_token_hash", hashToken(newRefreshToken));
+    return NextResponse.json({ error: "refresh_rotation_failed" }, { status: 503 });
+  }
 
   const response = NextResponse.json({ ok: true });
   response.headers.append("Set-Cookie", sessionCookieHeader(newAccessToken));
