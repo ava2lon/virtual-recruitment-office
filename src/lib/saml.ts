@@ -1,3 +1,6 @@
+import { SAML } from "@node-saml/node-saml";
+import { getSupabaseAdmin } from "./supabaseAdmin";
+
 export interface SamlConfig {
   spEntityId: string;
   spAcsUrl: string;
@@ -5,6 +8,8 @@ export interface SamlConfig {
   idpSsoUrl: string;
   idpCert: string;
 }
+
+const REQUEST_TTL_MS = 5 * 60 * 1000;
 
 export function getSamlConfig(baseUrl: string): SamlConfig {
   return {
@@ -16,6 +21,61 @@ export function getSamlConfig(baseUrl: string): SamlConfig {
   };
 }
 
+function createDatabaseCacheProvider() {
+  const admin = getSupabaseAdmin();
+  return {
+    async saveAsync(key: string, value: string) {
+      const createdAt = Date.now();
+      const { error } = await admin.from("saml_request_cache").insert({
+        request_id: key,
+        cache_value: value,
+        created_at_ms: createdAt,
+        expires_at: new Date(createdAt + REQUEST_TTL_MS).toISOString(),
+      });
+      if (error) return null;
+      return { value, createdAt };
+    },
+    async getAsync(key: string) {
+      const { data, error } = await admin.from("saml_request_cache")
+        .select("cache_value").eq("request_id", key)
+        .gt("expires_at", new Date().toISOString()).maybeSingle();
+      return error || !data ? null : data.cache_value;
+    },
+    async removeAsync(key: string | null) {
+      if (!key) return null;
+      const { data, error } = await admin.from("saml_request_cache")
+        .delete().eq("request_id", key).select("cache_value").maybeSingle();
+      return error || !data ? null : data.cache_value;
+    },
+    async consumeAsync(key: string) {
+      const { data, error } = await admin.from("saml_request_cache")
+        .delete().eq("request_id", key).select("cache_value").maybeSingle();
+      return error || !data ? null : data.cache_value;
+    },
+  };
+}
+
+export function createSamlClient(baseUrl: string) {
+  const config = getSamlConfig(baseUrl);
+  if (!config.idpSsoUrl || !config.idpCert || !config.idpEntityId) {
+    throw new Error("SAML identity provider is not fully configured.");
+  }
+  return new SAML({
+    callbackUrl: config.spAcsUrl,
+    entryPoint: config.idpSsoUrl,
+    issuer: config.spEntityId,
+    audience: config.spEntityId,
+    idpIssuer: config.idpEntityId,
+    idpCert: config.idpCert,
+    wantAssertionsSigned: true,
+    wantAuthnResponseSigned: false,
+    validateInResponseTo: "always",
+    requestIdExpirationPeriodMs: REQUEST_TTL_MS,
+    maxAssertionAgeMs: REQUEST_TTL_MS,
+    cacheProvider: createDatabaseCacheProvider(),
+  });
+}
+
 export function buildSpMetadata(config: SamlConfig): string {
   return `<?xml version="1.0"?>
 <EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="${config.spEntityId}">
@@ -24,39 +84,4 @@ export function buildSpMetadata(config: SamlConfig): string {
     <AssertionConsumerService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="${config.spAcsUrl}" index="0" isDefault="true"/>
   </SPSSODescriptor>
 </EntityDescriptor>`;
-}
-
-export function buildAuthnRequest(config: SamlConfig): string {
-  const id = "_" + Math.random().toString(36).slice(2);
-  const issueInstant = new Date().toISOString();
-  const xml = `<?xml version="1.0"?>
-<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="${id}" Version="2.0" IssueInstant="${issueInstant}" Destination="${config.idpSsoUrl}" AssertionConsumerServiceURL="${config.spAcsUrl}">
-  <saml:Issuer>${config.spEntityId}</saml:Issuer>
-  <samlp:NameIDPolicy Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress" AllowCreate="true"/>
-</samlp:AuthnRequest>`;
-  return Buffer.from(xml).toString("base64");
-}
-
-export interface SamlAssertion {
-  nameId: string;
-  email: string;
-  attributes: Record<string, string>;
-}
-
-export function parseSamlResponse(base64Response: string): SamlAssertion {
-  const xml = Buffer.from(base64Response, "base64").toString("utf8");
-  // Extract NameID
-  const nameIdMatch = xml.match(/<saml:NameID[^>]*>([^<]+)<\/saml:NameID>/) || xml.match(/<NameID[^>]*>([^<]+)<\/NameID>/);
-  const nameId = nameIdMatch ? nameIdMatch[1].trim() : "";
-  // Extract email attribute or use nameId
-  const emailAttrMatch = xml.match(/AttributeName="[^"]*email[^"]*"[^>]*>[\s\S]*?<saml:AttributeValue[^>]*>([^<]+)<\/saml:AttributeValue>/i);
-  const email = emailAttrMatch ? emailAttrMatch[1].trim() : nameId;
-  // Generic attributes
-  const attributes: Record<string, string> = {};
-  const attrRegex = /AttributeName="([^"]+)"[^>]*>[\s\S]*?<saml:AttributeValue[^>]*>([^<]+)<\/saml:AttributeValue>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = attrRegex.exec(xml)) !== null) {
-    attributes[m[1]] = m[2].trim();
-  }
-  return { nameId, email, attributes };
 }
