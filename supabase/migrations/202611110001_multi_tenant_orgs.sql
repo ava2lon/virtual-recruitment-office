@@ -32,13 +32,54 @@ alter table public.organizations enable row level security;
 alter table public.organization_members enable row level security;
 alter table public.organization_invites enable row level security;
 
--- Members can read their orgs.
+-- SECURITY DEFINER membership predicates avoid recursive RLS lookups.
+create or replace function public.is_org_member(p_org_id uuid)
+returns boolean
+language sql stable security definer
+set search_path = ''
+as $
+  select exists (
+    select 1 from public.organization_members om
+    where om.organization_id = p_org_id and om.user_id = auth.uid()
+  );
+$;
+
+create or replace function public.is_org_admin(p_org_id uuid)
+returns boolean
+language sql stable security definer
+set search_path = ''
+as $
+  select exists (
+    select 1 from public.organization_members om
+    where om.organization_id = p_org_id
+      and om.user_id = auth.uid()
+      and om.role in ('owner','admin')
+  );
+$;
+
+create or replace function public.is_org_owner(p_org_id uuid)
+returns boolean
+language sql stable security definer
+set search_path = ''
+as $
+  select exists (
+    select 1 from public.organizations o
+    where o.id = p_org_id and o.owner_id = auth.uid()
+  );
+$;
+
+revoke all on function public.is_org_member(uuid) from public;
+revoke all on function public.is_org_admin(uuid) from public;
+revoke all on function public.is_org_owner(uuid) from public;
+grant execute on function public.is_org_member(uuid) to authenticated;
+grant execute on function public.is_org_admin(uuid) to authenticated;
+grant execute on function public.is_org_owner(uuid) to authenticated;
+
+-- Members can read their orgs without recursive policy evaluation.
 drop policy if exists "orgs read by members" on public.organizations;
 create policy "orgs read by members"
   on public.organizations
-  for select to authenticated using (
-    exists (select 1 from public.organization_members om where om.organization_id = organizations.id and om.user_id = auth.uid())
-  );
+  for select to authenticated using (public.is_org_member(id));
 drop policy if exists "orgs insert by authenticated" on public.organizations;
 create policy "orgs insert by authenticated"
   on public.organizations
@@ -47,29 +88,33 @@ create policy "orgs insert by authenticated"
 drop policy if exists "org_members read by members" on public.organization_members;
 create policy "org_members read by members"
   on public.organization_members
-  for select to authenticated using (
-    exists (select 1 from public.organization_members om where om.organization_id = organization_members.organization_id and om.user_id = auth.uid())
-  );
+  for select to authenticated using (public.is_org_member(organization_id));
 drop policy if exists "org_members insert by admins" on public.organization_members;
 create policy "org_members insert by admins"
   on public.organization_members
   for insert to authenticated with check (
-    exists (select 1 from public.organization_members om where om.organization_id = organization_members.organization_id and om.user_id = auth.uid() and om.role in ('owner','admin'))
-    or not exists (select 1 from public.organization_members om where om.organization_id = organization_members.organization_id)
+    (public.is_org_admin(organization_id) and role in ('member','viewer'))
+    or (public.is_org_owner(organization_id) and role = 'admin')
+    or (public.is_org_owner(organization_id) and role = 'owner'
+        and not exists (
+          select 1 from public.organization_members om
+          where om.organization_id = organization_members.organization_id
+        ))
   );
 
 drop policy if exists "org_invites read by members" on public.organization_invites;
 create policy "org_invites read by members"
   on public.organization_invites
   for select to authenticated using (
-    exists (select 1 from public.organization_members om where om.organization_id = organization_invites.organization_id and om.user_id = auth.uid())
-    or email = (select email from public.users where id = auth.uid())
+    public.is_org_member(organization_id)
+    or lower(email) = lower((select email from public.users where id = auth.uid()))
   );
 drop policy if exists "org_invites insert by admins" on public.organization_invites;
 create policy "org_invites insert by admins"
   on public.organization_invites
   for insert to authenticated with check (
-    exists (select 1 from public.organization_members om where om.organization_id = organization_invites.organization_id and om.user_id = auth.uid() and om.role in ('owner','admin'))
+    public.is_org_admin(organization_id)
+    and (role <> 'admin' or public.is_org_owner(organization_id))
   );
 
 revoke all on public.organizations, public.organization_members, public.organization_invites from anon;
