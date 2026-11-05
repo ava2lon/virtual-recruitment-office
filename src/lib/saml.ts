@@ -1,4 +1,4 @@
-import { SAML } from "@node-saml/node-saml";
+import { SAML, ValidateInResponseTo } from "@node-saml/node-saml";
 import { getSupabaseAdmin } from "./supabaseAdmin";
 
 export interface SamlConfig {
@@ -69,7 +69,7 @@ export function createSamlClient(baseUrl: string) {
     idpCert: config.idpCert,
     wantAssertionsSigned: true,
     wantAuthnResponseSigned: false,
-    validateInResponseTo: "always",
+    validateInResponseTo: ValidateInResponseTo.always,
     requestIdExpirationPeriodMs: REQUEST_TTL_MS,
     maxAssertionAgeMs: REQUEST_TTL_MS,
     cacheProvider: createDatabaseCacheProvider(),
