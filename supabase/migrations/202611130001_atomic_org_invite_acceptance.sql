@@ -9,7 +9,7 @@ set search_path = ''
 as $$
 declare
   v_user_email text;
-  v_email_confirmed_at timestamptz;
+  v_email_verified boolean;
   v_invite_id uuid;
   v_organization_id uuid;
   v_invite_email text;
@@ -24,12 +24,12 @@ begin
     raise exception using errcode = '22023', message = 'invalid_invite_token';
   end if;
 
-  select lower(btrim(u.email)), u.email_confirmed_at
-    into v_user_email, v_email_confirmed_at
-    from auth.users u
+  select lower(btrim(u.email)), u.email_verified
+    into v_user_email, v_email_verified
+    from public.users u
     where u.id = p_user_id;
 
-  if v_user_email is null or v_email_confirmed_at is null then
+  if v_user_email is null or v_email_verified is distinct from true then
     raise exception using errcode = '42501', message = 'verified_email_required';
   end if;
 
