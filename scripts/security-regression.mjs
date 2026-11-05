@@ -196,7 +196,7 @@ const samlSource = readFileSync(new URL("../src/lib/saml.ts", import.meta.url), 
 const samlLoginSource = readFileSync(new URL("../src/app/api/auth/saml/login/route.ts", import.meta.url), "utf8");
 const samlAcsSource = readFileSync(new URL("../src/app/api/auth/saml/acs/route.ts", import.meta.url), "utf8");
 const samlCacheMigration = readFileSync(new URL("../supabase/migrations/202611150001_saml_request_cache.sql", import.meta.url), "utf8");
-assert.match(samlSource, /validateInResponseTo:\s*"always"/, "SAML responses must correlate to an SP-initiated request");
+assert.match(samlSource, /validateInResponseTo:\s*ValidateInResponseTo\.always/, "SAML responses must correlate to an SP-initiated request");
 assert.match(samlSource, /consumeAsync\(/, "SAML request IDs must be consumed atomically to prevent replay");
 assert.match(samlSource, /getAuthorizeFormAsync\(relayState\)/, "SAML login must use the library-generated AuthnRequest");
 assert.match(samlSource, /saml_request_cache/, "SAML request correlation must use shared server-side storage");
