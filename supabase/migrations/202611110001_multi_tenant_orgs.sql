@@ -66,7 +66,7 @@ create or replace function private.is_org_owner(p_org_id uuid)
 returns boolean
 language sql stable security definer
 set search_path = ''
-as $
+as $$
   select exists (
     select 1 from public.organizations o
     where o.id = p_org_id and o.owner_id = auth.uid()
@@ -77,7 +77,7 @@ create or replace function private.is_org_unclaimed(p_org_id uuid)
 returns boolean
 language sql stable security definer
 set search_path = ''
-as $
+as $$
   select not exists (
     select 1 from public.organization_members om
     where om.organization_id = p_org_id
