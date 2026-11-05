@@ -11,12 +11,8 @@ create table if not exists public.user_sessions (
 );
 
 alter table public.user_sessions enable row level security;
-
-drop policy if exists "user_sessions read own" on public.user_sessions;
-create policy "user_sessions read own" on public.user_sessions
-  for select to authenticated using (user_id = auth.uid());
-
-revoke all on public.user_sessions from anon, authenticated;
+-- Refresh-token hashes and session metadata are server-only.
+revoke all on public.user_sessions from public, anon, authenticated;
 grant all on public.user_sessions to service_role;
 
 create index if not exists user_sessions_user_idx on public.user_sessions (user_id, created_at desc);
