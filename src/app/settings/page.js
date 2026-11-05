@@ -36,6 +36,12 @@ export default function SettingsPage() {
           <span>Receive email digest of application updates</span>
         </label>
       </div>
+
+      <div className="wb-card" style={{ display: "grid", gap: "0.75rem", maxWidth: "480px", marginTop: "1.5rem" }}>
+        <h3>Calendar sync</h3>
+        <p style={{ color: "var(--wb-color-muted)", fontSize: "0.875rem" }}>Connect your Google Calendar to sync interviews and events.</p>
+        <a className="button" href="/api/calendar/google/connect">Connect Google Calendar</a>
+      </div>
     </section>
   );
 }
