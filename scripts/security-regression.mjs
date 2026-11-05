@@ -205,6 +205,7 @@ assert.doesNotMatch(orgMigration, /as \$(?:\r?\n)|\r?\n\$;/i, "organization migr
 assert.match(samlLoginSource, /wb_saml_state/, "SAML login must bind RelayState to the initiating browser");
 assert.match(samlAcsSource, /safeEqual\(stateCookie, relayState\)/, "SAML ACS must timing-safely validate browser-bound RelayState");
 assert.match(samlAcsSource, /validatePostResponseAsync/, "SAML ACS must use the library's signed-response validation");
+assert.match(samlAcsSource, /profile\.issuer !== config\.idpEntityId/, "SAML ACS must verify the trusted identity provider issuer");
 assert.doesNotMatch(samlAcsSource, /encodeURIComponent\(msg\)/, "SAML validation errors must not be reflected to login URLs");
 count += 24;
 
