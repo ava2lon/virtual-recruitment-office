@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "../../../../../lib/supabaseAdmin";
+import { getSessionFromRequest } from "../../../../../lib/oauth/session";
 import { verifyTotp } from "../../../../../lib/totp";
 import crypto from "node:crypto";
 
@@ -9,8 +10,10 @@ export async function POST(request: Request) {
   let body: { userId?: string; code?: string; recoveryCode?: string };
   try { body = await request.json(); } catch { return NextResponse.json({ error: "invalid_json" }, { status: 400 }); }
 
-  const { userId, code, recoveryCode } = body;
-  if (!userId) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
+  const session = getSessionFromRequest(request);
+  if (!session) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+  const userId = session.sub;
+  const { code, recoveryCode } = body;
 
   const supabase = getSupabaseAdmin();
   const { data: mfa } = await supabase.from("user_mfa").select("*").eq("user_id", userId).maybeSingle();
