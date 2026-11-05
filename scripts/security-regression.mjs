@@ -99,7 +99,7 @@ for (const check of checks) {
 
 const sessionSource = readFileSync(new URL("../src/lib/oauth/session.ts", import.meta.url), "utf8");
 assert.match(sessionSource, /timingSafeEqual/, "session signatures must use constant-time comparison");
-assert.match(sessionSource, /ByteLength\(secret, "utf8"\) < 32/, "session secrets must be at least 32 bytes");
+assert.match(sessionSource, /byteLength\(secret, "utf8"\) < 32/, "session secrets must be at least 32 bytes");
 assert.match(sessionSource, /decoded\.exp <= now/, "expired sessions must be rejected");
 assert.match(sessionSource, /header\?\.alg !== "HS256"/, "session algorithm must be pinned to HS256");
 assert.doesNotMatch(sessionSource, /dev-session-secret-change-me/, "must not contain a predictable fallback session secret");
