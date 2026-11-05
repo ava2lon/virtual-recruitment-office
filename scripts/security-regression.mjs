@@ -192,7 +192,20 @@ for (const [source, label] of [[registerOptionsSource,"registration options"],[r
 assert.match(registerVerifySource, /\.is\("consumed_at", null\)/, "registration challenge must be consumed once");
 assert.match(authVerifySource, /\.is\("consumed_at", null\)/, "authentication challenge must be consumed once");
 assert.match(authVerifySource, /credential_counter_conflict/, "authenticator counters must use optimistic concurrency control");
-count += 15;
+const samlSource = readFileSync(new URL("../src/lib/saml.ts", import.meta.url), "utf8");
+const samlLoginSource = readFileSync(new URL("../src/app/api/auth/saml/login/route.ts", import.meta.url), "utf8");
+const samlAcsSource = readFileSync(new URL("../src/app/api/auth/saml/acs/route.ts", import.meta.url), "utf8");
+const samlCacheMigration = readFileSync(new URL("../supabase/migrations/202611150001_saml_request_cache.sql", import.meta.url), "utf8");
+assert.match(samlSource, /validateInResponseTo:\s*"always"/, "SAML responses must correlate to an SP-initiated request");
+assert.match(samlSource, /consumeAsync\(/, "SAML request IDs must be consumed atomically to prevent replay");
+assert.match(samlSource, /getAuthorizeFormAsync\(relayState\)/, "SAML login must use the library-generated AuthnRequest");
+assert.match(samlSource, /saml_request_cache/, "SAML request correlation must use shared server-side storage");
+assert.match(samlCacheMigration, /revoke all on public\.saml_request_cache from public, anon, authenticated/i, "SAML request cache must be server-only");
+assert.match(samlLoginSource, /wb_saml_state/, "SAML login must bind RelayState to the initiating browser");
+assert.match(samlAcsSource, /safeEqual\(stateCookie, relayState\)/, "SAML ACS must timing-safely validate browser-bound RelayState");
+assert.match(samlAcsSource, /validatePostResponseAsync/, "SAML ACS must use the library's signed-response validation");
+assert.doesNotMatch(samlAcsSource, /encodeURIComponent\(msg\)/, "SAML validation errors must not be reflected to login URLs");
+count += 24;
 
 const refreshSource = readFileSync(new URL("../src/app/api/auth/refresh/route.ts", import.meta.url), "utf8");
 assert.match(refreshSource, /insertError/, "refresh rotation must check token persistence errors");
