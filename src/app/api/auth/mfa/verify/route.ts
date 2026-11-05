@@ -1,23 +1,15 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "../../../../../lib/supabaseAdmin";
 import { verifyTotp } from "../../../../../lib/totp";
+import { getSessionFromRequest } from "../../../../../lib/oauth/session";
 import crypto from "node:crypto";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const cookieHeader = request.headers.get("cookie") || "";
-  const sessionMatch = cookieHeader.match(/wb_session=([^;]+)/);
-  const token = sessionMatch ? decodeURIComponent(sessionMatch[1]) : null;
-  if (!token) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
-
-  let userId: string;
-  try {
-    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8"));
-    userId = payload.sub;
-  } catch {
-    return NextResponse.json({ error: "invalid_session" }, { status: 401 });
-  }
+  const session = getSessionFromRequest(request);
+  if (!session) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+  const userId = session.sub;
 
   let body: { code?: string };
   try { body = await request.json(); } catch { return NextResponse.json({ error: "invalid_json" }, { status: 400 }); }
