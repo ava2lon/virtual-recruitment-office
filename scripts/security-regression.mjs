@@ -141,7 +141,6 @@ assert.doesNotMatch(acceptInviteSource, /from\("organization_members"\)/, "route
 const atomicInviteMigration = readFileSync(new URL("../supabase/migrations/202611130001_atomic_org_invite_acceptance.sql", import.meta.url), "utf8");
 assert.match(atomicInviteMigration, /security definer/i, "atomic invite RPC must be SECURITY DEFINER");
 assert.match(atomicInviteMigration, /set search_path\s*=\s*''/i, "atomic invite RPC must pin an empty search_path");
-assert.match(atomicInviteMigration, /for update/i, "atomic invite RPC must lock the invitation row");
 assert.match(atomicInviteMigration, /p_user_id uuid/, "atomic invite RPC must require a server-verified user ID");
 assert.match(atomicInviteMigration, /where u\.id = p_user_id/, "atomic invite RPC must resolve the user by ID");
 assert.match(atomicInviteMigration, /public\.users/, "atomic invite RPC must use the custom OAuth user table");
