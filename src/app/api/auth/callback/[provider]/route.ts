@@ -61,7 +61,7 @@ export async function GET(
     }
 
     // Retrieve code verifier from the same browser request.
-    const verifierMatch = cookieHeader.match(/(?:^|;\\s*)wb_oauth_verifier=([^;]+)/);
+    const verifierMatch = cookieHeader.match(/(?:^|;\s*)wb_oauth_verifier=([^;]+)/);
     const codeVerifier = verifierMatch ? decodeURIComponent(verifierMatch[1]) : parsed.codeVerifier;
     if (!codeVerifier) {
       return fail(origin, "missing_code_verifier");
