@@ -71,7 +71,7 @@ as $$
     select 1 from public.organizations o
     where o.id = p_org_id and o.owner_id = auth.uid()
   );
-$;
+$$;
 
 create or replace function private.is_org_unclaimed(p_org_id uuid)
 returns boolean
@@ -82,7 +82,7 @@ as $$
     select 1 from public.organization_members om
     where om.organization_id = p_org_id
   );
-$;
+$$;
 
 revoke all on function private.is_org_member(uuid) from public;
 revoke all on function private.is_org_admin(uuid) from public;
