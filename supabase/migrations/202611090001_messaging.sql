@@ -34,23 +34,23 @@ create or replace function public.is_conversation_participant(p_conversation_id 
 returns boolean
 language sql stable security definer
 set search_path = ''
-as $
+as $$
   select exists (
     select 1 from public.conversation_participants cp
     where cp.conversation_id = p_conversation_id and cp.user_id = auth.uid()
   );
-$;
+$$;
 
 create or replace function public.can_add_conversation_participant(p_conversation_id uuid)
 returns boolean
 language sql stable security definer
 set search_path = ''
-as $
+as $$
   select exists (
     select 1 from public.conversations c
     where c.id = p_conversation_id and c.created_by = auth.uid()
   );
-$;
+$$;
 
 revoke all on function public.is_conversation_participant(uuid) from public;
 revoke all on function public.can_add_conversation_participant(uuid) from public;
@@ -66,6 +66,12 @@ drop policy if exists "conversations insert by authenticated" on public.conversa
 create policy "conversations insert by authenticated"
   on public.conversations
   for insert to authenticated with check (created_by = auth.uid());
+drop policy if exists "conversations update by participants" on public.conversations;
+create policy "conversations update by participants"
+  on public.conversations
+  for update to authenticated
+  using (public.is_conversation_participant(id))
+  with check (public.is_conversation_participant(id));
 
 drop policy if exists "participants read own" on public.conversation_participants;
 create policy "participants read own"
@@ -96,10 +102,10 @@ drop policy if exists "messages insert by participants" on public.messages;
 create policy "messages insert by participants"
   on public.messages
   for insert to authenticated with check (
-    sender_id = auth.uid() and exists (select 1 from public.conversation_participants cp where cp.conversation_id = messages.conversation_id and cp.user_id = auth.uid())
+    sender_id = auth.uid() and public.is_conversation_participant(conversation_id)
   );
 
-revoke all on public.conversations, public.conversation_participants, public.messages from anon;
+revoke all on public.conversations, public.conversation_participants, public.messages from public, anon, authenticated;
 grant select, insert on public.conversations to authenticated, service_role;
 grant update (updated_at) on public.conversations to authenticated;
 grant select, insert on public.conversation_participants to authenticated, service_role;
