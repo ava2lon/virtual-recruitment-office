@@ -35,7 +35,7 @@ export async function GET(
 
     // Bind the signed state to the initiating browser to prevent login CSRF.
     const cookieHeader = request.headers.get("cookie") || "";
-    const stateMatch = cookieHeader.match(/(?:^|;\\s*)wb_oauth_state=([^;]+)/);
+    const stateMatch = cookieHeader.match(/(?:^|;\s*)wb_oauth_state=([^;]+)/);
     let browserState = "";
     try { browserState = stateMatch ? decodeURIComponent(stateMatch[1]) : ""; }
     catch { return fail(origin, "invalid_state_cookie"); }
