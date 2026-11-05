@@ -10,8 +10,9 @@ create table if not exists public.user_mfa (
 
 alter table public.user_mfa enable row level security;
 
-create policy if not exists "user_mfa read own" on public.user_mfa
+drop policy if exists "user_mfa read own" on public.user_mfa;
+create policy "user_mfa read own" on public.user_mfa
   for select to authenticated using (user_id = auth.uid());
 
-revoke all on public.user_mfa from anon;
-grant select, insert, update, delete on public.user_mfa to service_role;
+revoke all on public.user_mfa from anon, authenticated;
+grant all on public.user_mfa to service_role;
