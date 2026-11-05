@@ -21,13 +21,16 @@ create table if not exists public.user_identities (
 alter table public.users enable row level security;
 alter table public.user_identities enable row level security;
 
--- Service-role only writes; authenticated users can read their own row.
-create policy if not exists "users read own" on public.users
+drop policy if exists "users read own" on public.users;
+create policy "users read own" on public.users
   for select to authenticated using (id = auth.uid());
-create policy if not exists "user_identities read own" on public.user_identities
+drop policy if exists "user_identities read own" on public.user_identities;
+create policy "user_identities read own" on public.user_identities
   for select to authenticated using (user_id = auth.uid());
 
 revoke all on public.users from anon;
 revoke all on public.user_identities from anon;
+grant select on public.users to authenticated;
+grant select on public.user_identities to authenticated;
 grant select, insert, update on public.users to service_role;
 grant select, insert, update, delete on public.user_identities to service_role;
