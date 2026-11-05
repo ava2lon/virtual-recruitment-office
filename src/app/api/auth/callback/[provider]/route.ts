@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { verifyState } from "../../../../../lib/oauth/state";
 import { exchangeCodeForTokens, fetchProviderProfile } from "../../../../../lib/oauth/providers";
@@ -32,7 +33,19 @@ export async function GET(
       return fail(origin, "missing_code_or_state");
     }
 
-    // Validate state (CSRF protection).
+    // Bind the signed state to the initiating browser to prevent login CSRF.
+    const cookieHeader = request.headers.get("cookie") || "";
+    const stateMatch = cookieHeader.match(/(?:^|;\\s*)wb_oauth_state=([^;]+)/);
+    let browserState = "";
+    try { browserState = stateMatch ? decodeURIComponent(stateMatch[1]) : ""; }
+    catch { return fail(origin, "invalid_state_cookie"); }
+    const suppliedState = Buffer.from(stateParam);
+    const cookieState = Buffer.from(browserState);
+    if (!browserState || suppliedState.length !== cookieState.length || !crypto.timingSafeEqual(suppliedState, cookieState)) {
+      return fail(origin, "state_mismatch");
+    }
+
+    // Validate state signature (integrity protection).
     const decoded = verifyState(stateParam);
     if (!decoded) {
       return fail(origin, "state_mismatch");
