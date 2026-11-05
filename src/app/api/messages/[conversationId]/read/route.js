@@ -1,32 +1,31 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSessionFromRequest } from "../../../../../../lib/oauth/session";
+import { getSupabaseAdmin } from "../../../../../../lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 
-function client(token) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: { Authorization: "Bearer " + token } } });
-}
-
 export async function GET(request, { params }) {
   const { conversationId } = await params;
-  const authorization = request.headers.get("authorization") || "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-  if (!token) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  const supabase = client(token);
-  if (!supabase) return NextResponse.json({ error: "Supabase not configured." }, { status: 503 });
+  const session = getSessionFromRequest(request);
+  if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
 
-  const { data: authData } = await supabase.auth.getUser(token);
-  if (!authData?.user) return NextResponse.json({ error: "Invalid session." }, { status: 401 });
+  let admin;
+  try { admin = getSupabaseAdmin(); }
+  catch { return NextResponse.json({ error: "Messaging service is not configured." }, { status: 503 }); }
 
-  const { data: participants } = await supabase
-    .from("conversation_participants")
-    .select("user_id, last_read_at")
+  const { data: membership, error: membershipError } = await admin.from("conversation_participants")
+    .select("id")
+    .eq("conversation_id", conversationId)
+    .eq("user_id", session.sub)
+    .maybeSingle();
+  if (membershipError || !membership) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
+
+  const { data: participants, error } = await admin.from("conversation_participants")
+    .select("user_id,last_read_at")
     .eq("conversation_id", conversationId);
+  if (error) return NextResponse.json({ error: "Could not load read receipts." }, { status: 500 });
 
   const reads = {};
-  for (const p of participants || []) reads[p.user_id] = p.last_read_at;
+  for (const participant of participants || []) reads[participant.user_id] = participant.last_read_at;
   return NextResponse.json({ reads });
 }
