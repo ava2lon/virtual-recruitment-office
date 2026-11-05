@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
 const migrationFiles = {
   hardened: "../supabase/migrations/20261025100000_harden_security_definer_search_path.sql",
@@ -180,5 +180,27 @@ const refreshSource = readFileSync(new URL("../src/app/api/auth/refresh/route.ts
 assert.match(refreshSource, /insertError/, "refresh rotation must check token persistence errors");
 assert.match(refreshSource, /revokeError/, "refresh rotation must check revocation errors");
 count += 2;
+
+const migrationDirectory = new URL("../supabase/migrations/", import.meta.url);
+const migrationNames = readdirSync(migrationDirectory).filter((name) => name.endsWith(".sql"));
+const migrationVersions = migrationNames.map((name) => name.split("_")[0]);
+assert.equal(new Set(migrationVersions).size, migrationVersions.length, "migration version prefixes must be unique");
+count += 1;
+for (const name of migrationNames) {
+  const sql = readFileSync(new URL(name, migrationDirectory), "utf8");
+  assert.doesNotMatch(sql, /create\s+policy\s+if\s+not\s+exists/i, name + " must use PostgreSQL-compatible policy DDL");
+  count += 1;
+}
+for (const name of [
+  "202611090001_messaging.sql",
+  "202611110001_multi_tenant_orgs.sql",
+  "202611120001_org_scoped_isolation.sql",
+  "202611130001_atomic_org_invite_acceptance.sql",
+]) {
+  const sql = readFileSync(new URL(name, migrationDirectory), "utf8");
+  const delimiters = sql.match(/\$\$/g) || [];
+  assert.equal(delimiters.length % 2, 0, name + " must have balanced SQL function delimiters");
+  count += 1;
+}
 
 console.log("Security regression checks passed: " + count);
