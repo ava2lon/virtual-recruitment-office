@@ -29,25 +29,37 @@ alter table public.conversation_participants enable row level security;
 alter table public.messages enable row level security;
 
 -- Participants can read their conversations.
-create policy if not exists "conversations read by participants" on public.conversations
+drop policy if exists "conversations read by participants" on public.conversations;
+create policy "conversations read by participants"
+  on public.conversations
   for select to authenticated using (
     exists (select 1 from public.conversation_participants cp where cp.conversation_id = conversations.id and cp.user_id = auth.uid())
   );
-create policy if not exists "conversations insert by authenticated" on public.conversations
+drop policy if exists "conversations insert by authenticated" on public.conversations;
+create policy "conversations insert by authenticated"
+  on public.conversations
   for insert to authenticated with check (true);
 
-create policy if not exists "participants read own" on public.conversation_participants
+drop policy if exists "participants read own" on public.conversation_participants;
+create policy "participants read own"
+  on public.conversation_participants
   for select to authenticated using (user_id = auth.uid() or exists (
     select 1 from public.conversation_participants cp2 where cp2.conversation_id = conversation_participants.conversation_id and cp2.user_id = auth.uid()
   ));
-create policy if not exists "participants insert by authenticated" on public.conversation_participants
+drop policy if exists "participants insert by authenticated" on public.conversation_participants;
+create policy "participants insert by authenticated"
+  on public.conversation_participants
   for insert to authenticated with check (true);
 
-create policy if not exists "messages read by participants" on public.messages
+drop policy if exists "messages read by participants" on public.messages;
+create policy "messages read by participants"
+  on public.messages
   for select to authenticated using (
     exists (select 1 from public.conversation_participants cp where cp.conversation_id = messages.conversation_id and cp.user_id = auth.uid())
   );
-create policy if not exists "messages insert by participants" on public.messages
+drop policy if exists "messages insert by participants" on public.messages;
+create policy "messages insert by participants"
+  on public.messages
   for insert to authenticated with check (
     sender_id = auth.uid() and exists (select 1 from public.conversation_participants cp where cp.conversation_id = messages.conversation_id and cp.user_id = auth.uid())
   );
