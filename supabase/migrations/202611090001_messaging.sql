@@ -29,8 +29,12 @@ alter table public.conversations enable row level security;
 alter table public.conversation_participants enable row level security;
 alter table public.messages enable row level security;
 
--- SECURITY DEFINER predicates avoid recursive RLS evaluation.
-create or replace function public.is_conversation_participant(p_conversation_id uuid)
+-- SECURITY DEFINER predicates live in a non-exposed schema.
+create schema if not exists private;
+revoke all on schema private from public, anon;
+grant usage on schema private to authenticated;
+
+create or replace function private.is_conversation_participant(p_conversation_id uuid)
 returns boolean
 language sql stable security definer
 set search_path = ''
@@ -41,7 +45,7 @@ as $$
   );
 $$;
 
-create or replace function public.can_add_conversation_participant(p_conversation_id uuid)
+create or replace function private.can_add_conversation_participant(p_conversation_id uuid)
 returns boolean
 language sql stable security definer
 set search_path = ''
@@ -52,16 +56,16 @@ as $$
   );
 $$;
 
-revoke all on function public.is_conversation_participant(uuid) from public;
-revoke all on function public.can_add_conversation_participant(uuid) from public;
-grant execute on function public.is_conversation_participant(uuid) to authenticated;
-grant execute on function public.can_add_conversation_participant(uuid) to authenticated;
+revoke all on function private.is_conversation_participant(uuid) from public;
+revoke all on function private.can_add_conversation_participant(uuid) from public;
+grant execute on function private.is_conversation_participant(uuid) to authenticated;
+grant execute on function private.can_add_conversation_participant(uuid) to authenticated;
 
 -- Participants can read their conversations.
 drop policy if exists "conversations read by participants" on public.conversations;
 create policy "conversations read by participants"
   on public.conversations
-  for select to authenticated using (public.is_conversation_participant(id));
+  for select to authenticated using (private.is_conversation_participant(id));
 drop policy if exists "conversations insert by authenticated" on public.conversations;
 create policy "conversations insert by authenticated"
   on public.conversations
@@ -70,20 +74,20 @@ drop policy if exists "conversations update by participants" on public.conversat
 create policy "conversations update by participants"
   on public.conversations
   for update to authenticated
-  using (public.is_conversation_participant(id))
-  with check (public.is_conversation_participant(id));
+  using (private.is_conversation_participant(id))
+  with check (private.is_conversation_participant(id));
 
 drop policy if exists "participants read own" on public.conversation_participants;
 create policy "participants read own"
   on public.conversation_participants
   for select to authenticated using (
-    user_id = auth.uid() or public.is_conversation_participant(conversation_id)
+    user_id = auth.uid() or private.is_conversation_participant(conversation_id)
   );
 drop policy if exists "participants insert by authenticated" on public.conversation_participants;
 create policy "participants insert by authenticated"
   on public.conversation_participants
   for insert to authenticated with check (
-    public.can_add_conversation_participant(conversation_id)
+    private.can_add_conversation_participant(conversation_id)
   );
 drop policy if exists "participants update own read state" on public.conversation_participants;
 create policy "participants update own read state"
@@ -96,13 +100,13 @@ drop policy if exists "messages read by participants" on public.messages;
 create policy "messages read by participants"
   on public.messages
   for select to authenticated using (
-    public.is_conversation_participant(messages.conversation_id)
+    private.is_conversation_participant(messages.conversation_id)
   );
 drop policy if exists "messages insert by participants" on public.messages;
 create policy "messages insert by participants"
   on public.messages
   for insert to authenticated with check (
-    sender_id = auth.uid() and public.is_conversation_participant(conversation_id)
+    sender_id = auth.uid() and private.is_conversation_participant(conversation_id)
   );
 
 revoke all on public.conversations, public.conversation_participants, public.messages from public, anon, authenticated;
