@@ -17,40 +17,35 @@ export async function POST(request) {
   const supabase = client(token);
   if (!supabase) return NextResponse.json({ error: "Supabase not configured." }, { status: 503 });
 
-  const { data: authData } = await supabase.auth.getUser(token);
-  if (!authData?.user) return NextResponse.json({ error: "Invalid session." }, { status: 401 });
+  const { data: authData, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !authData?.user) return NextResponse.json({ error: "Invalid session." }, { status: 401 });
 
   let body;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON." }, { status: 400 }); }
   const inviteToken = typeof body?.token === "string" ? body.token : "";
-  if (!inviteToken || inviteToken.length > 256) return NextResponse.json({ error: "A valid invite token is required." }, { status: 400 });
-  const authenticatedEmail = typeof authData.user.email === "string" ? authData.user.email.trim().toLowerCase() : "";
-  if (!authenticatedEmail || !authData.user.email_confirmed_at) return NextResponse.json({ error: "Your account must have a verified email address." }, { status: 403 });
-
-  const { data: invite } = await supabase.from("organization_invites").select("*").eq("token", inviteToken).maybeSingle();
-  if (!invite) return NextResponse.json({ error: "Invite not found." }, { status: 404 });
-  if (String(invite.email).trim().toLowerCase() !== authenticatedEmail) {
-    return NextResponse.json({ error: "This invitation was issued to a different email address." }, { status: 403 });
+  if (!inviteToken || inviteToken.length < 32 || inviteToken.length > 256) {
+    return NextResponse.json({ error: "A valid invite token is required." }, { status: 400 });
   }
-  if (invite.accepted_at) return NextResponse.json({ error: "Invite already accepted." }, { status: 409 });
-  if (new Date(invite.expires_at) < new Date()) return NextResponse.json({ error: "Invite expired." }, { status: 410 });
+  if (!authData.user.email || !authData.user.email_confirmed_at) {
+    return NextResponse.json({ error: "Your account must have a verified email address." }, { status: 403 });
+  }
 
-  const { error: membershipError } = await supabase.from("organization_members").upsert({
-    organization_id: invite.organization_id,
-    user_id: authData.user.id,
-    role: invite.role,
-  }, { onConflict: "organization_id,user_id", ignoreDuplicates: true });
-  if (membershipError) return NextResponse.json({ error: "Could not add you to the organization." }, { status: 500 });
+  const { data: organizationId, error } = await supabase.rpc("accept_organization_invite", {
+    p_token: inviteToken,
+  });
 
-  const { data: claimedInvite, error: claimError } = await supabase
-    .from("organization_invites")
-    .update({ accepted_at: new Date().toISOString() })
-    .eq("id", invite.id)
-    .is("accepted_at", null)
-    .select("id")
-    .maybeSingle();
-  if (claimError) return NextResponse.json({ error: "Could not accept invitation." }, { status: 500 });
-  if (!claimedInvite) return NextResponse.json({ error: "Invite already accepted." }, { status: 409 });
+  if (error) {
+    const message = String(error.message || "");
+    if (message.includes("invite_not_found")) return NextResponse.json({ error: "Invite not found." }, { status: 404 });
+    if (message.includes("invite_already_accepted")) return NextResponse.json({ error: "Invite already accepted." }, { status: 409 });
+    if (message.includes("invite_expired")) return NextResponse.json({ error: "Invite expired." }, { status: 410 });
+    if (message.includes("invite_email_mismatch")) return NextResponse.json({ error: "This invitation was issued to a different email address." }, { status: 403 });
+    if (message.includes("verified_email_required") || message.includes("authentication_required")) {
+      return NextResponse.json({ error: "A verified authenticated account is required." }, { status: 403 });
+    }
+    console.error("Organization invitation acceptance failed:", error.code || "unknown");
+    return NextResponse.json({ error: "Could not accept invitation." }, { status: 500 });
+  }
 
-  return NextResponse.json({ ok: true, organizationId: invite.organization_id });
+  return NextResponse.json({ ok: true, organizationId });
 }
