@@ -6,10 +6,11 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   const cookieHeader = request.headers.get("cookie") || "";
-  const refreshMatch = cookieHeader.match(new RegExp("(?:^|;\\\\s*)" + REFRESH_COOKIE + "=([^;]+)"));
-  if (refreshMatch) {
+  const refreshCookie = cookieHeader.split(";").map((part) => part.trim()).find((part) => part.startsWith(REFRESH_COOKIE + "="));
+  const refreshTokenValue = refreshCookie ? refreshCookie.slice(REFRESH_COOKIE.length + 1) : "";
+  if (refreshTokenValue) {
     try {
-      const refreshToken = decodeURIComponent(refreshMatch[1]);
+      const refreshToken = decodeURIComponent(refreshTokenValue);
       if (refreshToken) {
         const supabase = getSupabaseAdmin();
         await supabase.from("user_sessions")
