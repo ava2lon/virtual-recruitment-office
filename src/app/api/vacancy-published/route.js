@@ -82,10 +82,23 @@ export async function POST(request) {
     published_at: new Date().toISOString()
   };
 
+  const webhookSecret = process.env.WORKBRIDGE_N8N_INBOUND_SECRET;
+  if (!webhookSecret || Buffer.byteLength(webhookSecret, "utf8") < 32) {
+    return NextResponse.json({
+      ok: true,
+      automationConfigured: true,
+      automationQueued: false,
+      warning: "Vacancy published, but secure n8n webhook authentication is not configured."
+    });
+  }
+
   try {
     const response = await fetch(webhookUrl, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-workbridge-secret": webhookSecret
+      },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(8000)
     });
