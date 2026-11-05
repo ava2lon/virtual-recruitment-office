@@ -133,10 +133,18 @@ assert.match(inviteSource, /crypto\.randomBytes\(32\)/, "invite tokens must have
 count += 3;
 
 const acceptInviteSource = readFileSync(new URL("../src/app/api/orgs/invites/accept/route.js", import.meta.url), "utf8");
-assert.match(acceptInviteSource, /authenticatedEmail/, "invite acceptance must resolve the authenticated email");
-assert.match(acceptInviteSource, /different email address/, "invite acceptance must enforce the invited email");
-assert.match(acceptInviteSource, /\.is\("accepted_at", null\)/, "invite acceptance must reject already-claimed invitations");
-count += 3;
+assert.match(acceptInviteSource, /getUser\(token\)/, "invite acceptance must authenticate the bearer token");
+assert.match(acceptInviteSource, /accept_organization_invite/, "invite acceptance must use the atomic database RPC");
+assert.doesNotMatch(acceptInviteSource, /from\("organization_members"\)/, "route must not create membership outside the transaction");
+const atomicInviteMigration = readFileSync(new URL("../supabase/migrations/202611130001_atomic_org_invite_acceptance.sql", import.meta.url), "utf8");
+assert.match(atomicInviteMigration, /security definer/i, "atomic invite RPC must be SECURITY DEFINER");
+assert.match(atomicInviteMigration, /set search_path\s*=\s*''/i, "atomic invite RPC must pin an empty search_path");
+assert.match(atomicInviteMigration, /for update/i, "atomic invite RPC must lock the invitation row");
+assert.match(atomicInviteMigration, /auth\.uid\(\)/, "atomic invite RPC must bind acceptance to the authenticated user");
+assert.match(atomicInviteMigration, /email_confirmed_at/, "atomic invite RPC must require a verified email");
+assert.match(atomicInviteMigration, /on conflict \(organization_id, user_id\) do nothing/i, "atomic invite RPC must safely handle existing membership");
+assert.match(atomicInviteMigration, /grant execute on function public\.accept_organization_invite\(text\) to authenticated/i, "atomic invite RPC must be callable by authenticated users");
+count += 11;
 
 const refreshSource = readFileSync(new URL("../src/app/api/auth/refresh/route.ts", import.meta.url), "utf8");
 assert.match(refreshSource, /insertError/, "refresh rotation must check token persistence errors");
