@@ -96,4 +96,28 @@ for (const check of checks) {
   }
   console.log("PASS " + check.name);
 }
+
+const sessionSource = readFileSync(new URL("../src/lib/oauth/session.ts", import.meta.url), "utf8");
+assert.match(sessionSource, /timingSafeEqual/, "session signatures must use constant-time comparison");
+assert.match(sessionSource, /ByteLength\(secret, "utf8"\) < 32/, "session secrets must be at least 32 bytes");
+assert.match(sessionSource, /decoded\.exp <= now/, "expired sessions must be rejected");
+assert.match(sessionSource, /header\?\.alg !== "HS256"/, "session algorithm must be pinned to HS256");
+assert.doesNotMatch(sessionSource, /dev-session-secret-change-me/, "must not contain a predictable fallback session secret");
+count += 5;
+
+const calendarEventsSource = readFileSync(new URL("../src/app/api/calendar/events/route.ts", import.meta.url), "utf8");
+assert.match(calendarEventsSource, /getSessionFromRequest\(request\)/, "calendar event creation must verify the session signature");
+assert.doesNotMatch(calendarEventsSource, /Buffer\.from\(sessionToken\.split/, "calendar event creation must not decode unverified session claims");
+count += 2;
+
+const calendarCallbackSource = readFileSync(new URL("../src/app/api/calendar/google/callback/route.ts", import.meta.url), "utf8");
+assert.match(calendarCallbackSource, /timingSafeEqual/, "Google Calendar callback must compare OAuth state safely");
+assert.match(calendarCallbackSource, /getSessionFromRequest\(request\)/, "Google Calendar callback must require a verified user session");
+count += 2;
+
+const mfaChallengeSource = readFileSync(new URL("../src/app/api/auth/mfa/challenge/route.ts", import.meta.url), "utf8");
+assert.match(mfaChallengeSource, /getSessionFromRequest\(request\)/, "MFA challenges must be bound to the authenticated user");
+assert.doesNotMatch(mfaChallengeSource, /const \{ userId, code, recoveryCode \}/, "MFA challenge must not trust a caller-supplied user ID");
+count += 2;
+
 console.log("Security regression checks passed: " + count);
