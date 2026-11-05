@@ -201,7 +201,7 @@ assert.match(samlSource, /consumeAsync\(/, "SAML request IDs must be consumed at
 assert.match(samlLoginSource, /getAuthorizeFormAsync\(relayState\)/, "SAML login must use the library-generated AuthnRequest");
 assert.match(samlSource, /saml_request_cache/, "SAML request correlation must use shared server-side storage");
 assert.match(samlCacheMigration, /revoke all on public\.saml_request_cache from public, anon, authenticated/i, "SAML request cache must be server-only");
-assert.doesNotMatch(orgMigration, /as \$(?:\\r?\\n)|\\r?\\n\$;/i, "organization migration must use valid SQL dollar delimiters");
+assert.doesNotMatch(orgMigration, /as \$(?:\r?\n)|\r?\n\$;/i, "organization migration must use valid SQL dollar delimiters");
 assert.match(samlLoginSource, /wb_saml_state/, "SAML login must bind RelayState to the initiating browser");
 assert.match(samlAcsSource, /safeEqual\(stateCookie, relayState\)/, "SAML ACS must timing-safely validate browser-bound RelayState");
 assert.match(samlAcsSource, /validatePostResponseAsync/, "SAML ACS must use the library's signed-response validation");
