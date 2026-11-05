@@ -120,4 +120,27 @@ assert.match(mfaChallengeSource, /getSessionFromRequest\(request\)/, "MFA challe
 assert.doesNotMatch(mfaChallengeSource, /const \{ userId, code, recoveryCode \}/, "MFA challenge must not trust a caller-supplied user ID");
 count += 2;
 
+
+const oauthCallbackSource = readFileSync(new URL("../src/app/api/auth/callback/[provider]/route.ts", import.meta.url), "utf8");
+assert.match(oauthCallbackSource, /wb_oauth_state/, "OAuth callback must bind state to the initiating browser cookie");
+assert.match(oauthCallbackSource, /timingSafeEqual/, "OAuth state comparison must be constant-time");
+count += 2;
+
+const inviteSource = readFileSync(new URL("../src/app/api/orgs/[id]/invite/route.js", import.meta.url), "utf8");
+assert.match(inviteSource, /organization_members/, "organization invites must verify caller membership");
+assert.match(inviteSource, /membership\.role !== "owner"/, "only owners may grant admin role");
+assert.match(inviteSource, /crypto\.randomBytes\(32\)/, "invite tokens must have 256 bits of entropy");
+count += 3;
+
+const acceptInviteSource = readFileSync(new URL("../src/app/api/orgs/invites/accept/route.js", import.meta.url), "utf8");
+assert.match(acceptInviteSource, /authenticatedEmail/, "invite acceptance must resolve the authenticated email");
+assert.match(acceptInviteSource, /different email address/, "invite acceptance must enforce the invited email");
+assert.match(acceptInviteSource, /\.is\("accepted_at", null\)/, "invite acceptance must reject already-claimed invitations");
+count += 3;
+
+const refreshSource = readFileSync(new URL("../src/app/api/auth/refresh/route.ts", import.meta.url), "utf8");
+assert.match(refreshSource, /insertError/, "refresh rotation must check token persistence errors");
+assert.match(refreshSource, /revokeError/, "refresh rotation must check revocation errors");
+count += 2;
+
 console.log("Security regression checks passed: " + count);
