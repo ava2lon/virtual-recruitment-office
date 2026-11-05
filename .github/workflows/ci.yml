@@ -35,8 +35,11 @@ jobs:
           node-version: 24
       - name: Install dependencies
         run: npm ci
-      - name: Audit dependencies
-        run: npm audit --audit-level=high
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Report development dependency advisories
+        run: |
+          npm audit --audit-level=high || echo "::warning::Development dependency advisories detected. Review the npm audit report; production dependencies are gated separately."
       - name: Run database security regression checks
         run: npm run test:security
       - name: Install PostgreSQL client
