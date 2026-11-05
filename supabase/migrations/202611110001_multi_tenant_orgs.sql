@@ -33,29 +33,41 @@ alter table public.organization_members enable row level security;
 alter table public.organization_invites enable row level security;
 
 -- Members can read their orgs.
-create policy if not exists "orgs read by members" on public.organizations
+drop policy if exists "orgs read by members" on public.organizations;
+create policy "orgs read by members"
+  on public.organizations
   for select to authenticated using (
     exists (select 1 from public.organization_members om where om.organization_id = organizations.id and om.user_id = auth.uid())
   );
-create policy if not exists "orgs insert by authenticated" on public.organizations
+drop policy if exists "orgs insert by authenticated" on public.organizations;
+create policy "orgs insert by authenticated"
+  on public.organizations
   for insert to authenticated with check (owner_id = auth.uid());
 
-create policy if not exists "org_members read by members" on public.organization_members
+drop policy if exists "org_members read by members" on public.organization_members;
+create policy "org_members read by members"
+  on public.organization_members
   for select to authenticated using (
     exists (select 1 from public.organization_members om where om.organization_id = organization_members.organization_id and om.user_id = auth.uid())
   );
-create policy if not exists "org_members insert by admins" on public.organization_members
+drop policy if exists "org_members insert by admins" on public.organization_members;
+create policy "org_members insert by admins"
+  on public.organization_members
   for insert to authenticated with check (
     exists (select 1 from public.organization_members om where om.organization_id = organization_members.organization_id and om.user_id = auth.uid() and om.role in ('owner','admin'))
     or not exists (select 1 from public.organization_members om where om.organization_id = organization_members.organization_id)
   );
 
-create policy if not exists "org_invites read by members" on public.organization_invites
+drop policy if exists "org_invites read by members" on public.organization_invites;
+create policy "org_invites read by members"
+  on public.organization_invites
   for select to authenticated using (
     exists (select 1 from public.organization_members om where om.organization_id = organization_invites.organization_id and om.user_id = auth.uid())
     or email = (select email from public.users where id = auth.uid())
   );
-create policy if not exists "org_invites insert by admins" on public.organization_invites
+drop policy if exists "org_invites insert by admins" on public.organization_invites;
+create policy "org_invites insert by admins"
+  on public.organization_invites
   for insert to authenticated with check (
     exists (select 1 from public.organization_members om where om.organization_id = organization_invites.organization_id and om.user_id = auth.uid() and om.role in ('owner','admin'))
   );
