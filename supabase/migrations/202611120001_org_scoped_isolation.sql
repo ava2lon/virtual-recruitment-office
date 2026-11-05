@@ -13,7 +13,11 @@ create index if not exists applications_org_idx on public.applications (organiza
 create index if not exists conversations_org_idx on public.conversations (organization_id);
 
 -- Helper: is the current user a member of the given org?
-create or replace function public.is_org_member(p_org_id uuid)
+create schema if not exists private;
+revoke all on schema private from public, anon;
+grant usage on schema private to authenticated;
+
+create or replace function private.is_org_member(p_org_id uuid)
 returns boolean
 language sql
 stable
@@ -26,21 +30,21 @@ as $$
   );
 $$;
 
-revoke all on function public.is_org_member(uuid) from public;
-grant execute on function public.is_org_member(uuid) to authenticated;
+revoke all on function private.is_org_member(uuid) from public;
+grant execute on function private.is_org_member(uuid) to authenticated;
 
 -- Jobs: scope read/write to org members (or owner with no org for legacy).
 drop policy if exists "jobs read by org members" on public.jobs;
 create policy "jobs read by org members" on public.jobs
   for select to authenticated using (
-    organization_id is not null and public.is_org_member(organization_id)
+    organization_id is not null and private.is_org_member(organization_id)
   );
 
 -- Applications: scope by org.
 drop policy if exists "applications read by org members" on public.applications;
 create policy "applications read by org members" on public.applications
   for select to authenticated using (
-    organization_id is not null and public.is_org_member(organization_id)
+    organization_id is not null and private.is_org_member(organization_id)
   );
 
 -- Organization-scoped conversations are readable by members of that organization.
@@ -48,5 +52,5 @@ create policy "applications read by org members" on public.applications
 drop policy if exists "conversations read by org members" on public.conversations;
 create policy "conversations read by org members" on public.conversations
   for select to authenticated using (
-    organization_id is not null and public.is_org_member(organization_id)
+    organization_id is not null and private.is_org_member(organization_id)
   );
