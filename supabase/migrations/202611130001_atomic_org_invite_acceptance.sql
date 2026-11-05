@@ -1,13 +1,13 @@
--- Accept an organization invitation and create membership atomically.
--- The row lock serializes concurrent acceptance attempts for the same invite.
-create or replace function public.accept_organization_invite(p_token text)
+-- Server-only atomic organization invitation acceptance.
+-- The RPC is executable only by service_role; the API route authenticates the
+-- caller first, then supplies the verified Supabase Auth user ID.
+create or replace function public.accept_organization_invite(p_token text, p_user_id uuid)
 returns uuid
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
-  v_user_id uuid := auth.uid();
   v_user_email text;
   v_email_confirmed_at timestamptz;
   v_invite_id uuid;
@@ -17,10 +17,9 @@ declare
   v_accepted_at timestamptz;
   v_role text;
 begin
-  if v_user_id is null then
+  if p_user_id is null then
     raise exception using errcode = '28000', message = 'authentication_required';
   end if;
-
   if p_token is null or length(p_token) < 32 or length(p_token) > 256 then
     raise exception using errcode = '22023', message = 'invalid_invite_token';
   end if;
@@ -28,7 +27,7 @@ begin
   select lower(btrim(u.email)), u.email_confirmed_at
     into v_user_email, v_email_confirmed_at
     from auth.users u
-    where u.id = v_user_id;
+    where u.id = p_user_id;
 
   if v_user_email is null or v_email_confirmed_at is null then
     raise exception using errcode = '42501', message = 'verified_email_required';
@@ -54,7 +53,7 @@ begin
   end if;
 
   insert into public.organization_members (organization_id, user_id, role)
-    values (v_organization_id, v_user_id, v_role)
+    values (v_organization_id, p_user_id, v_role)
     on conflict (organization_id, user_id) do nothing;
 
   update public.organization_invites
@@ -65,5 +64,5 @@ begin
 end;
 $$;
 
-revoke all on function public.accept_organization_invite(text) from public, anon;
-grant execute on function public.accept_organization_invite(text) to authenticated;
+revoke all on function public.accept_organization_invite(text, uuid) from public, anon, authenticated;
+grant execute on function public.accept_organization_invite(text, uuid) to service_role;
