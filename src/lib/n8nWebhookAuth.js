@@ -27,7 +27,7 @@ export async function verifyN8nWebhookRequest(request) {
   }
 
   const contentType = request.headers.get("content-type") || "";
-  if (!/^application\\/json(?:\\s*;|$)/i.test(contentType)) {
+  if (!/^application\/json(?:\s*;|$)/i.test(contentType)) {
     return failure(415, "Content-Type must be application/json.");
   }
 
@@ -35,7 +35,7 @@ export async function verifyN8nWebhookRequest(request) {
   const nonce = request.headers.get("x-workbridge-nonce") || "";
   const signatureHeader = request.headers.get("x-workbridge-signature") || "";
 
-  if (!/^\\d{10}$/.test(timestampHeader)) {
+  if (!/^\d{10}$/.test(timestampHeader)) {
     return failure(401, "Invalid webhook authentication.");
   }
   if (!/^[A-Za-z0-9_-]{22,128}$/.test(nonce)) {
@@ -53,7 +53,7 @@ export async function verifyN8nWebhookRequest(request) {
   }
 
   const declaredLength = request.headers.get("content-length");
-  if (declaredLength && (!/^\\d+$/.test(declaredLength) || Number(declaredLength) > MAX_BODY_BYTES)) {
+  if (declaredLength && (!/^\d+$/.test(declaredLength) || Number(declaredLength) > MAX_BODY_BYTES)) {
     return failure(413, "Webhook payload is too large.");
   }
 
@@ -95,9 +95,14 @@ export async function verifyN8nWebhookRequest(request) {
     return failure(503, "Inbound automation is temporarily unavailable.");
   }
 
-  const { error: insertError } = await admin
-    .from("n8n_webhook_nonces")
-    .insert({ nonce_hash: nonceHash, expires_at: expiresAt });
+  let insertError;
+  try {
+    ({ error: insertError } = await admin
+      .from("n8n_webhook_nonces")
+      .insert({ nonce_hash: nonceHash, expires_at: expiresAt }));
+  } catch {
+    return failure(503, "Inbound automation is temporarily unavailable.");
+  }
 
   if (insertError) {
     if (insertError.code === "23505") {
@@ -108,10 +113,14 @@ export async function verifyN8nWebhookRequest(request) {
 
   // Opportunistic TTL cleanup. A cleanup failure must not invalidate a
   // successfully reserved nonce or cause the caller to retry a valid event.
-  await admin
-    .from("n8n_webhook_nonces")
-    .delete()
-    .lt("expires_at", new Date().toISOString());
+  try {
+    await admin
+      .from("n8n_webhook_nonces")
+      .delete()
+      .lt("expires_at", new Date().toISOString());
+  } catch {
+    // Expired rows are harmless and can be removed by a later request.
+  }
 
   return { ok: true, payload };
 }
