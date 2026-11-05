@@ -28,11 +28,14 @@ alter table public.role_permissions enable row level security;
 alter table public.user_roles enable row level security;
 
 -- Readable by authenticated users (needed for client permission checks).
-create policy if not exists "app_roles readable by authenticated"
+drop policy if exists "app_roles readable by authenticated" on public.app_roles;
+create policy "app_roles readable by authenticated"
   on public.app_roles for select to authenticated using (true);
-create policy if not exists "role_permissions readable by authenticated"
+drop policy if exists "role_permissions readable by authenticated" on public.role_permissions;
+create policy "role_permissions readable by authenticated"
   on public.role_permissions for select to authenticated using (true);
-create policy if not exists "user_roles readable by self"
+drop policy if exists "user_roles readable by self" on public.user_roles;
+create policy "user_roles readable by self"
   on public.user_roles for select to authenticated using (user_id = auth.uid());
 
 -- Seed default roles.
