@@ -1,39 +1,27 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSessionFromRequest } from "../../../../lib/oauth/session";
 import { getSupabaseAdmin } from "../../../../lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 
-function client(token) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { Authorization: "Bearer " + token } },
-  });
-}
-
 export async function GET(request) {
-  const authorization = request.headers.get("authorization") || "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-  if (!token) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  const supabase = client(token);
-  if (!supabase) return NextResponse.json({ error: "Supabase not configured." }, { status: 503 });
+  const session = getSessionFromRequest(request);
+  if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
 
-  const { data: authData, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !authData?.user) return NextResponse.json({ error: "Invalid session." }, { status: 401 });
+  let admin;
+  try { admin = getSupabaseAdmin(); }
+  catch { return NextResponse.json({ error: "Messaging service is not configured." }, { status: 503 }); }
 
-  const { data: participations, error: participationError } = await supabase
+  const { data: participations, error: participationError } = await admin
     .from("conversation_participants")
-    .select("conversation_id, last_read_at, conversations(id,subject,created_at,updated_at)")
-    .eq("user_id", authData.user.id);
+    .select("conversation_id,last_read_at,conversations(id,subject,created_at,updated_at)")
+    .eq("user_id", session.sub);
   if (participationError) return NextResponse.json({ error: "Could not load conversations." }, { status: 500 });
 
   const ids = (participations || []).map((p) => p.conversation_id);
   if (ids.length === 0) return NextResponse.json({ conversations: [] });
 
-  const { data: lastMessages, error: messageError } = await supabase
+  const { data: lastMessages, error: messageError } = await admin
     .from("messages")
     .select("id,conversation_id,body,created_at,sender_id")
     .in("conversation_id", ids)
@@ -41,8 +29,8 @@ export async function GET(request) {
   if (messageError) return NextResponse.json({ error: "Could not load conversation activity." }, { status: 500 });
 
   const latestByConv = {};
-  for (const m of lastMessages || []) {
-    if (!latestByConv[m.conversation_id]) latestByConv[m.conversation_id] = m;
+  for (const message of lastMessages || []) {
+    if (!latestByConv[message.conversation_id]) latestByConv[message.conversation_id] = message;
   }
 
   const conversations = (participations || []).map((p) => ({
@@ -52,19 +40,12 @@ export async function GET(request) {
     last_message: latestByConv[p.conversation_id] || null,
     last_read_at: p.last_read_at,
   }));
-
   return NextResponse.json({ conversations });
 }
 
 export async function POST(request) {
-  const authorization = request.headers.get("authorization") || "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-  if (!token) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  const supabase = client(token);
-  if (!supabase) return NextResponse.json({ error: "Supabase not configured." }, { status: 503 });
-
-  const { data: authData, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !authData?.user) return NextResponse.json({ error: "Invalid session." }, { status: 401 });
+  const session = getSessionFromRequest(request);
+  if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
 
   let body;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON." }, { status: 400 }); }
@@ -80,30 +61,33 @@ export async function POST(request) {
     return NextResponse.json({ error: "Subject or initial message exceeds the allowed length." }, { status: 400 });
   }
 
-  const allParticipants = Array.from(new Set([authData.user.id, ...participantIds]));
-  const { data: conv, error: convError } = await supabase
-    .from("conversations")
-    .insert({ subject: subject || null, created_by: authData.user.id })
+  let admin;
+  try { admin = getSupabaseAdmin(); }
+  catch { return NextResponse.json({ error: "Messaging service is not configured." }, { status: 503 }); }
+
+  const allParticipants = Array.from(new Set([session.sub, ...participantIds]));
+  const { data: conv, error: convError } = await admin.from("conversations")
+    .insert({ subject: subject || null, created_by: session.sub })
     .select("id")
     .single();
   if (convError || !conv) return NextResponse.json({ error: "Could not create conversation." }, { status: 500 });
 
-  const { error: participantsError } = await supabase.from("conversation_participants").insert(
-    allParticipants.map((uid) => ({ conversation_id: conv.id, user_id: uid }))
+  const { error: participantError } = await admin.from("conversation_participants").insert(
+    allParticipants.map((userId) => ({ conversation_id: conv.id, user_id: userId }))
   );
-  if (participantsError) {
-    try { await getSupabaseAdmin().from("conversations").delete().eq("id", conv.id); } catch {}
-    return NextResponse.json({ error: "Could not add conversation participants." }, { status: 500 });
+  if (participantError) {
+    await admin.from("conversations").delete().eq("id", conv.id);
+    return NextResponse.json({ error: "Could not add conversation participants." }, { status: 400 });
   }
 
   if (initialMessage) {
-    const { error: messageError } = await supabase.from("messages").insert({
+    const { error: messageError } = await admin.from("messages").insert({
       conversation_id: conv.id,
-      sender_id: authData.user.id,
+      sender_id: session.sub,
       body: initialMessage,
     });
     if (messageError) {
-      try { await getSupabaseAdmin().from("conversations").delete().eq("id", conv.id); } catch {}
+      await admin.from("conversations").delete().eq("id", conv.id);
       return NextResponse.json({ error: "Could not create the initial message." }, { status: 500 });
     }
   }
