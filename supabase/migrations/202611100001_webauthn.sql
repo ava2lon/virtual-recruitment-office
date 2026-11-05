@@ -9,10 +9,6 @@ create table if not exists public.webauthn_credentials (
 );
 
 alter table public.webauthn_credentials enable row level security;
-
-drop policy if exists "webauthn read own" on public.webauthn_credentials;
-create policy "webauthn read own" on public.webauthn_credentials
-  for select to authenticated using (user_id = auth.uid());
-
-revoke all on public.webauthn_credentials from anon, authenticated;
+-- Passkey credential material is server-only.
+revoke all on public.webauthn_credentials from public, anon, authenticated;
 grant all on public.webauthn_credentials to service_role;
