@@ -116,14 +116,18 @@ Generate a shared secret with:
 openssl rand -hex 32
 ```
 
-**Published-vacancy webhook:** the `/api/vacancy-published` application route sends the `x-workbridge-secret` header with `WORKBRIDGE_N8N_INBOUND_SECRET` to the configured n8n webhook URL. Configure Header Auth on the n8n Webhook Trigger with:
+**Published-vacancy webhook:** the `/api/vacancy-published` application route sends the `x-workbridge-secret` header with `WORKBRIDGE_N8N_INBOUND_SECRET` to the configured n8n webhook URL. Create a dedicated n8n credential with these exact settings:
 
-- Header name: `x-workbridge-secret`
-- Header value: the exact value of `WORKBRIDGE_N8N_INBOUND_SECRET`
-- Webhook method: `POST`
-- Webhook URL: the production URL copied from the n8n Webhook Trigger
+| Setting | Value |
+|---|---|
+| Credential type | `Header Auth` (`httpHeaderAuth`) |
+| Credential name | `WorkBridge Vacancy Webhook Auth` |
+| Header name | `x-workbridge-secret` |
+| Header value | The exact value of `WORKBRIDGE_N8N_INBOUND_SECRET` in the matching Vercel environment |
 
-Keep the n8n workflow inactive while configuring it. Attach and test the credential before activating the workflow. Never put the secret in the webhook URL, query string, workflow payload, Slack messages, or execution logs.
+In n8n, open **Credentials → Add credential → Header Auth**, enter the settings above, and save. Then open the **Published Vacancy Webhook** node in **WorkBridge — Published Vacancy Social Drafts**, set **Authentication** to **Header Auth**, and select `WorkBridge Vacancy Webhook Auth`. Set the webhook method to `POST`, save the workflow, and copy its Production URL into `WORKBRIDGE_N8N_VACANCY_WEBHOOK_URL` in Vercel.
+
+Generate the secret locally with `openssl rand -hex 32`; paste it directly into the n8n credential and Vercel's encrypted environment-variable settings. Do not send it in chat, commit it, or put it in the webhook URL, query string, workflow payload, Slack messages, or execution logs. Use separate secrets and endpoints for staging and production. Keep the workflow inactive until the credential is attached and an authenticated test succeeds; then activate it. An unauthenticated request should be rejected.
 
 **Signed application callbacks:** the application routes `/api/n8n/events` and `/api/n8n/dead-letter` verify HMAC-SHA256 signatures using `WORKBRIDGE_N8N_INBOUND_SECRET`. Send the exact raw JSON body and these headers:
 
@@ -196,7 +200,7 @@ WORKBRIDGE_N8N_INBOUND_SECRET=
 DATABASE_URL=
 ```
 
-Do not copy the template's blank values into production as-is. Set real secrets through the hosting provider's encrypted environment-variable settings. Never expose `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`, OAuth client secrets, or `WORKBRIDGE_N8N_INBOUND_SECRET) in client-side code.
+Do not copy the template's blank values into production as-is. Set real secrets through the hosting provider's encrypted environment-variable settings. Never expose `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`, OAuth client secrets, or `WORKBRIDGE_N8N_INBOUND_SECRET` in client-side code.
 
 ## Supabase setup
 
@@ -231,12 +235,14 @@ Use Vercel's Production, Preview, and Development scopes deliberately. Do not co
 
 For the published vacancy workflow:
 
-1. Open **WorkBridge — Published Vacancy Social Drafts** in n8n.
-2. Open the Webhook Trigger node and set its authentication to **Header Auth**.
-3. Select or create the Header Auth credential described above, using header name `x-workbridge-secret` and the same value as the Vercel `WORKBRIDGE_N8N_INBOUND_SECRET`.
-4. Save the workflow and copy its **Production URL** into Vercel as `WORKBRIDGE_N8N_VACANCY_WEBHOOK_URL`.
-5. Confirm the webhook is HTTPS and the workflow is active only after a successful authenticated test.
-6. Ensure the Slack destination and AI model credentials are configured in n8n. Those credentials are managed inside n8n and are not application environment variables.
+1. Generate a fresh 32-byte random secret locally with `openssl rand -hex 32`.
+2. In n8n, open **Credentials → Add credential → Header Auth**.
+3. Save a dedicated credential named `WorkBridge Vacancy Webhook Auth`, with header name `x-workbridge-secret` and the generated secret as its header value.
+4. Open **WorkBridge — Published Vacancy Social Drafts** and edit the **Published Vacancy Webhook** trigger node.
+5. Set **Authentication** to **Header Auth** and select `WorkBridge Vacancy Webhook Auth`.
+6. In Vercel, set `WORKBRIDGE_N8N_INBOUND_SECRET` to the exact same secret and `WORKBRIDGE_N8N_VACANCY_WEBHOOK_URL` to the trigger's HTTPS Production URL. Apply each variable only to the intended environment; use distinct values for staging and production.
+7. Save the workflow and run an authenticated synthetic test. Confirm an unauthenticated request is rejected. Activate the workflow only after both checks pass.
+8. Ensure the Slack destination and AI model credentials are configured in n8n. Those credentials are managed inside n8n and are not application environment variables.
 
 The `/api/n8n/events` and `/api/n8n/dead-letter` endpoints are separate signed callback endpoints. Their senders must implement the HMAC header contract above; Header Auth alone is not a substitute for that signature contract.
 
