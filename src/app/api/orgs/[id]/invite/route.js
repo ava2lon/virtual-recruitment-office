@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { getSessionFromRequest } from "../../../../../lib/oauth/session";
 import { getSupabaseAdmin } from "../../../../../lib/supabaseAdmin";
+import { readJsonObject } from "../../../../../lib/requestValidation";
 
 export const runtime = "nodejs";
 
@@ -10,8 +11,9 @@ export async function POST(request, { params }) {
   if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   const { id } = await params;
 
-  let body;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON." }, { status: 400 }); }
+  const parsed = await readJsonObject(request);
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+  const body = parsed.payload;
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   const requestedRole = typeof body?.role === "string" ? body.role : "member";
   if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
