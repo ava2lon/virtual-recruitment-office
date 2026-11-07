@@ -176,6 +176,9 @@ assert.match(messagesSource, /readJsonObject\(request\)/, "message creation must
 assert.match(messagesSource, /limit > 100/, "message history must cap page size at 100");
 assert.match(messagesSource, /\.range\(page \* limit, page \* limit \+ limit\)/, "message history must fetch one extra row to detect another page");
 assert.match(messagesSource, /pagination: \{ page, limit, hasMore \}/, "message history must expose pagination metadata");
+const messagingIndexesMigration = readFileSync(new URL("../supabase/migrations/202611170001_messaging_query_indexes.sql", import.meta.url), "utf8");
+assert.match(messagingIndexesMigration, /idx_messages_conversation_created_id[\\s\\S]*?on public\\.messages \\(conversation_id, created_at, id\\)/i, "message pagination must have a matching composite index");
+assert.match(messagingIndexesMigration, /idx_conversation_participants_user_conversation[\\s\\S]*?on public\\.conversation_participants \\(user_id, conversation_id\\)/i, "participant lookups must have a user-first composite index");
 const messagingMigration = readFileSync(new URL("../supabase/migrations/202611090001_messaging.sql", import.meta.url), "utf8");
 assert.match(messagingMigration, /private\.is_conversation_participant/, "message RLS must use the private membership helper");
 assert.match(messagingMigration, /private\.can_add_conversation_participant/, "participant insertion must be limited to conversation creators");
@@ -220,7 +223,7 @@ assert.match(samlAcsSource, /safeEqual\(stateCookie, relayState\)/, "SAML ACS mu
 assert.match(samlAcsSource, /validatePostResponseAsync/, "SAML ACS must use the library's signed-response validation");
 assert.match(samlAcsSource, /profile\.issuer !== config\.idpEntityId/, "SAML ACS must verify the trusted identity provider issuer");
 assert.doesNotMatch(samlAcsSource, /encodeURIComponent\(msg\)/, "SAML validation errors must not be reflected to login URLs");
-count += 24;
+count += 26;
 
 const refreshSource = readFileSync(new URL("../src/app/api/auth/refresh/route.ts", import.meta.url), "utf8");
 assert.match(refreshSource, /insertError/, "refresh rotation must check token persistence errors");
