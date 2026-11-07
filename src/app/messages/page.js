@@ -7,6 +7,9 @@ export default function MessagesPage() {
   const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState("");
   const [messages, setMessages] = useState([]);
+  const [messagePage, setMessagePage] = useState(0);
+  const [hasOlderMessages, setHasOlderMessages] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -43,13 +46,15 @@ export default function MessagesPage() {
     }
   }, [api, activeId]);
 
-  const loadMessages = useCallback(async (id) => {
+  const loadMessages = useCallback(async (id, page = 0, append = false) => {
     if (!id) return;
     try {
-      const res = await api("/api/messages/" + id);
+      const res = await api("/api/messages/" + id + "?page=" + page + "&limit=50");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "load_failed");
-      setMessages(data.messages || []);
+      setMessages((prev) => append ? [...(data.messages || []), ...prev] : (data.messages || []));
+      setMessagePage(page);
+      setHasOlderMessages(Boolean(data.pagination?.hasMore));
       // fetch read receipts
       const supabase = getSupabase();
       const { data: session } = await supabase.auth.getSession();
@@ -61,13 +66,18 @@ export default function MessagesPage() {
       }
     } catch (e) {
       setError(e.message || "Could not load messages.");
+    } finally {
+      if (append) setLoadingOlder(false);
     }
   }, [api]);
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
   useEffect(() => {
     if (!activeId) return;
-    loadMessages(activeId);
+    setMessages([]);
+    setMessagePage(0);
+    setHasOlderMessages(false);
+    loadMessages(activeId, 0, false);
     const supabase = getSupabase();
     const channel = supabase
       .channel("presence:" + activeId, { config: { presence: { key: token || "anon" } } })
@@ -162,6 +172,11 @@ export default function MessagesPage() {
           ) : (
             <>
               <div style={{ flex: 1, overflowY: "auto", display: "grid", gap: "0.5rem", padding: "0.5rem" }}>
+                {hasOlderMessages && (
+                  <button type="button" className="button button-secondary" disabled={loadingOlder} onClick={() => { setLoadingOlder(true); loadMessages(activeId, messagePage + 1, true); }}>
+                    {loadingOlder ? "Loading older messages…" : "Load older messages"}
+                  </button>
+                )}
                 {messages.map((m) => (
                   <div key={m.id} style={{ alignSelf: "flex-start", maxWidth: "80%", padding: "0.5rem 0.75rem", borderRadius: "var(--wb-radius-md)", background: "var(--wb-color-surface)", border: "1px solid var(--wb-color-border)" }}>
                     <div style={{ fontSize: "0.75rem", color: "var(--wb-color-muted)" }}>{new Date(m.created_at).toLocaleString()}</div>
