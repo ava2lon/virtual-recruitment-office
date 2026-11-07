@@ -7,12 +7,12 @@ const MAX_REQUEST_BODY_BYTES = 16 * 1024;
 
 async function readJsonObject(request) {
   const contentType = request.headers.get("content-type") || "";
-  if (!/^application\\/json(?:\\s*;|$)/i.test(contentType)) {
+  if (!/^application\/json(?:\s*;|$)/i.test(contentType)) {
     return { ok: false, status: 415, error: "Content-Type must be application/json." };
   }
 
   const declaredLength = request.headers.get("content-length");
-  if (declaredLength && (!/^\\d+$/.test(declaredLength) || Number(declaredLength) > MAX_REQUEST_BODY_BYTES)) {
+  if (declaredLength && (!/^\d+$/.test(declaredLength) || Number(declaredLength) > MAX_REQUEST_BODY_BYTES)) {
     return { ok: false, status: 413, error: "Request payload is too large." };
   }
 
