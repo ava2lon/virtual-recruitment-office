@@ -176,6 +176,23 @@ assert.match(messagesSource, /readJsonObject\(request\)/, "message creation must
 assert.match(messagesSource, /limit > 100/, "message history must cap page size at 100");
 assert.match(messagesSource, /\.range\(page \* limit, page \* limit \+ limit\)/, "message history must fetch one extra row to detect another page");
 assert.match(messagesSource, /pagination: \{ page, limit, hasMore \}/, "message history must expose pagination metadata");
+const foreignKeyIndexesMigration = readFileSync(new URL("../supabase/migrations/202611170002_foreign_key_supporting_indexes.sql", import.meta.url), "utf8");
+for (const indexName of [
+  "idx_conversations_created_by",
+  "idx_messages_sender_id",
+  "idx_organization_invites_invited_by",
+  "idx_organization_invites_organization_id",
+  "idx_organization_members_user_id",
+  "idx_organizations_owner_id",
+  "idx_user_identities_user_id",
+  "idx_user_roles_granted_by",
+  "idx_user_roles_role_id",
+  "idx_webauthn_challenges_user_id",
+  "idx_webauthn_credentials_user_id",
+]) {
+  assert.match(foreignKeyIndexesMigration, new RegExp("create index if not exists " + indexName, "i"), indexName + " must be created idempotently");
+  count += 1;
+}
 const messagingIndexesMigration = readFileSync(new URL("../supabase/migrations/202611170001_messaging_query_indexes.sql", import.meta.url), "utf8");
 assert.match(messagingIndexesMigration, /idx_messages_conversation_created_id[\\s\\S]*?on public\\.messages \\(conversation_id, created_at, id\\)/i, "message pagination must have a matching composite index");
 assert.match(messagingIndexesMigration, /idx_conversation_participants_user_conversation[\\s\\S]*?on public\\.conversation_participants \\(user_id, conversation_id\\)/i, "participant lookups must have a user-first composite index");
