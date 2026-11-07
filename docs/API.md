@@ -1,27 +1,65 @@
-# WorkBridge API (n8n integration)
+# WorkBridge API
 
-## Health
+## Health and version
 - `GET /api/health` → `{ status, service, timestamp }`
+- `GET /api/version` → service version, deployment commit, environment, timestamp.
 
 ## Vacancy published (outbound trigger)
 - `POST /api/vacancy-published`
-- Headers: `Authorization: Bearer <supabase access token>`
-- Body: `{ jobId: string, companyId: string }`
-- Triggers the configured `WORKBRIDGE_N8N_VACANCY_WEBHOOK_URL` workflow.
+- Headers: `Authorization: Bearer <Supabase access token>`, `Content-Type: application/json`
+- Body: `{ "jobId": "<uuid>", "companyId": "<uuid>" }`
+- Request body limit: 16 KiB.
+- Triggers `WORKBRIDGE_N8N_VACANCY_WEBHOOK_URL` using the dedicated `x-workbridge-secret` header.
+- Requires a valid authenticated employer/company membership. Preview read-only deployments reject this action.
 
-## Inbound automation events
+## Signed inbound automation events
 - `POST /api/n8n/events`
-- Headers: `x-workbridge-secret: <WORKBRIDGE_N8N_INBOUND_SECRET>`
-- Body: `{ event: string, idempotencyKey?: string, payload?: object }`
-- Returns `202 { ok, received, event, idempotencyKey }`.
+- Headers:
+  - `Content-Type: application/json`
+  - `x-workbridge-timestamp: <10-digit Unix seconds>`
+  - `x-workbridge-nonce: <22-128 base64url characters>`
+  - `x-workbridge-signature: v1=<64 hexadecimal characters>`
+- HMAC input: `<timestamp>.<nonce>.<exact-raw-request-body>`
+- Body:
+  ```json
+  {
+    "event": "candidate.application.received",
+    "idempotencyKey": "caller-generated-key",
+    "payload": { "applicationId": "..." }
+  }
+  ```
+- `event` is required (1-128 characters); `idempotencyKey` is optional (1-128 characters); `payload` must be a JSON object.
+- Request body limit: 256 KiB; timestamp tolerance: ±5 minutes.
+- Accepted events are persisted in the server-only `workflow_events` table. A repeated `(event, idempotencyKey)` returns HTTP 200 with `duplicate: true`; a new event returns HTTP 202 with `eventId`.
 
-## Dead-letter recording
+## Dead-letter persistence
 - `POST /api/n8n/dead-letter`
-- Headers: `x-workbridge-secret: <WORKBRIDGE_N8N_INBOUND_SECRET>`
-- Body: `{ event: string, idempotencyKey?: string, payload?: object, error?: string }`
-- Returns `202 { ok, recorded, event, receivedAt }`.
+- Uses the same HMAC headers, signature input, nonce protection, clock tolerance, and 256 KiB body limit as the inbound event endpoint.
+- Body:
+  ```json
+  {
+    "event": "candidate.application.received",
+    "idempotencyKey": "caller-generated-key",
+    "payload": { "applicationId": "..." },
+    "error": "Downstream delivery failed"
+  }
+  ```
+- `event` is required (1-128 characters); `idempotencyKey` is optional (1-128 characters); `payload` must be a JSON object; `error` is optional (maximum 4000 characters).
+- Failures are persisted in the server-only `workflow_dead_letters` table. Duplicate keys return HTTP 200 with `duplicate: true`; new records return HTTP 202 with `deadLetterId` and initial status `open`.
+
+## Messaging
+- `GET /api/messages/conversations` — list conversations for the authenticated user.
+- `POST /api/messages/conversations` — create a conversation. JSON request body limit: 16 KiB.
+- `GET /api/messages/:conversationId?limit=50&page=0` — read a page of messages. The newest page is page 0, messages are returned in chronological order, `limit` is 1-100, and `pagination.hasMore` indicates older pages.
+- `POST /api/messages/:conversationId` — send a message. JSON request body limit: 16 KiB; message text limit: 10,000 characters.
+- All message operations require a valid application session and conversation membership.
+
+## Organization operations
+- `POST /api/orgs` — create an organization. JSON request body limit: 16 KiB.
+- `POST /api/orgs/:id/invite` — invite an organization member. JSON request body limit: 16 KiB. Owner/admin authorization applies; only owners may grant the admin role.
 
 ## Conventions
-- All timestamps ISO-8601 UTC.
-- Idempotency keys are caller-generated UUIDs; retries must reuse the same key.
+- Timestamps are ISO-8601 UTC.
+- Idempotency keys are caller-generated opaque strings; use the same key when retrying the same logical event.
+- Webhook nonces must be unique per request and must never be reused on retry.
 - Secrets are never returned in responses.
