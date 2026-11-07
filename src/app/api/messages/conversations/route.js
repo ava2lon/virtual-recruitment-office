@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionFromRequest } from "../../../../lib/oauth/session";
 import { getSupabaseAdmin } from "../../../../lib/supabaseAdmin";
+import { readJsonObject } from "../../../../lib/requestValidation";
 
 export const runtime = "nodejs";
 
@@ -47,9 +48,13 @@ export async function POST(request) {
   const session = getSessionFromRequest(request);
   if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
 
-  let body;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON." }, { status: 400 }); }
-  const participantIds = Array.isArray(body?.participantIds) ? body.participantIds : [];
+  const parsed = await readJsonObject(request);
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+  const body = parsed.payload;
+  if (body.participantIds !== undefined && !Array.isArray(body.participantIds)) {
+    return NextResponse.json({ error: "participantIds must be an array." }, { status: 400 });
+  }
+  const participantIds = Array.isArray(body.participantIds) ? body.participantIds : [];
   const subject = typeof body?.subject === "string" ? body.subject.trim() : "";
   const initialMessage = typeof body?.message === "string" ? body.message.trim() : "";
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
