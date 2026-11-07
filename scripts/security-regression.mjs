@@ -176,6 +176,11 @@ assert.match(messagesSource, /readJsonObject\(request\)/, "message creation must
 assert.match(messagesSource, /limit > 100/, "message history must cap page size at 100");
 assert.match(messagesSource, /\.range\(page \* limit, page \* limit \+ limit\)/, "message history must fetch one extra row to detect another page");
 assert.match(messagesSource, /pagination: \{ page, limit, hasMore \}/, "message history must expose pagination metadata");
+const rlsOptimizationMigration = readFileSync(new URL("../supabase/migrations/202611170003_rls_auth_initplan_optimization.sql", import.meta.url), "utf8");
+assert.equal((rlsOptimizationMigration.match(/\\(select auth\\.uid\\(\\)\\)/g) || []).length, 9, "optimized RLS policies must wrap each auth.uid lookup in a scalar subquery");
+assert.match(rlsOptimizationMigration, /drop policy if exists "messages insert by participants"/, "message insert policy must be safely replaced");
+assert.match(rlsOptimizationMigration, /with check \\(user_id = \\(select auth\\.uid\\(\\)\\)\\)/, "participant read-state updates must retain user ownership checks");
+count += 3;
 const foreignKeyIndexesMigration = readFileSync(new URL("../supabase/migrations/202611170002_foreign_key_supporting_indexes.sql", import.meta.url), "utf8");
 for (const indexName of [
   "idx_conversations_created_by",
