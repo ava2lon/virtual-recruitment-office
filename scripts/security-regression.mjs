@@ -177,9 +177,9 @@ assert.match(messagesSource, /limit > 100/, "message history must cap page size 
 assert.match(messagesSource, /\.range\(page \* limit, page \* limit \+ limit\)/, "message history must fetch one extra row to detect another page");
 assert.match(messagesSource, /pagination: \{ page, limit, hasMore \}/, "message history must expose pagination metadata");
 const rlsOptimizationMigration = readFileSync(new URL("../supabase/migrations/202611170003_rls_auth_initplan_optimization.sql", import.meta.url), "utf8");
-assert.equal((rlsOptimizationMigration.match(/\\(select auth\\.uid\\(\\)\\)/g) || []).length, 9, "optimized RLS policies must wrap each auth.uid lookup in a scalar subquery");
+assert.equal((rlsOptimizationMigration.match(/\(select auth\.uid\(\)\)/g) || []).length, 9, "optimized RLS policies must wrap each auth.uid lookup in a scalar subquery");
 assert.match(rlsOptimizationMigration, /drop policy if exists "messages insert by participants"/, "message insert policy must be safely replaced");
-assert.match(rlsOptimizationMigration, /with check \\(user_id = \\(select auth\\.uid\\(\\)\\)\\)/, "participant read-state updates must retain user ownership checks");
+assert.match(rlsOptimizationMigration, /with check \(user_id = \(select auth\.uid\(\)\)\)/, "participant read-state updates must retain user ownership checks");
 count += 3;
 const foreignKeyIndexesMigration = readFileSync(new URL("../supabase/migrations/202611170002_foreign_key_supporting_indexes.sql", import.meta.url), "utf8");
 for (const indexName of [
@@ -199,8 +199,8 @@ for (const indexName of [
   count += 1;
 }
 const messagingIndexesMigration = readFileSync(new URL("../supabase/migrations/202611170001_messaging_query_indexes.sql", import.meta.url), "utf8");
-assert.match(messagingIndexesMigration, /idx_messages_conversation_created_id[\\s\\S]*?on public\\.messages \\(conversation_id, created_at, id\\)/i, "message pagination must have a matching composite index");
-assert.match(messagingIndexesMigration, /idx_conversation_participants_user_conversation[\\s\\S]*?on public\\.conversation_participants \\(user_id, conversation_id\\)/i, "participant lookups must have a user-first composite index");
+assert.match(messagingIndexesMigration, /idx_messages_conversation_created_id[\s\S]*?on public\.messages \(conversation_id, created_at, id\)/i, "message pagination must have a matching composite index");
+assert.match(messagingIndexesMigration, /idx_conversation_participants_user_conversation[\s\S]*?on public\.conversation_participants \(user_id, conversation_id\)/i, "participant lookups must have a user-first composite index");
 const messagingMigration = readFileSync(new URL("../supabase/migrations/202611090001_messaging.sql", import.meta.url), "utf8");
 assert.match(messagingMigration, /private\.is_conversation_participant/, "message RLS must use the private membership helper");
 assert.match(messagingMigration, /private\.can_add_conversation_participant/, "participant insertion must be limited to conversation creators");
