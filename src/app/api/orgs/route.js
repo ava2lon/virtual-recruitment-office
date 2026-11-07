@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { getSessionFromRequest } from "../../../lib/oauth/session";
 import { getSupabaseAdmin } from "../../../lib/supabaseAdmin";
+import { readJsonObject } from "../../../lib/requestValidation";
 
 export const runtime = "nodejs";
 
@@ -27,8 +28,9 @@ export async function POST(request) {
   const session = getSessionFromRequest(request);
   if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
 
-  let body;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON." }, { status: 400 }); }
+  const parsed = await readJsonObject(request);
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+  const body = parsed.payload;
   const name = typeof body?.name === "string" ? body.name.trim() : "";
   if (!name || name.length > 120) return NextResponse.json({ error: "Organization name must be between 1 and 120 characters." }, { status: 400 });
 
