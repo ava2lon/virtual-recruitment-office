@@ -156,13 +156,23 @@ assert.match(inviteCreateSource, /membership\.role !== "owner"/, "only owners ma
 const orgRouteSource = readFileSync(new URL("../src/app/api/orgs/route.js", import.meta.url), "utf8");
 assert.match(orgRouteSource, /getSessionFromRequest\(request\)/, "organization APIs must verify the signed application session");
 assert.match(orgRouteSource, /crypto\.randomBytes/, "organization slugs must use cryptographic randomness");
+const requestValidationSource = readFileSync(new URL("../src/lib/requestValidation.js", import.meta.url), "utf8");
+assert.match(requestValidationSource, /MAX_JSON_BODY_BYTES = 16 \* 1024/, "messaging JSON bodies must have a 16 KiB limit");
+assert.match(requestValidationSource, /reader\.read\(\)/, "messaging JSON bodies must be streamed and size-checked");
+assert.match(requestValidationSource, /TextDecoder\("utf-8", \{ fatal: true \}\)/, "messaging JSON bodies must reject invalid UTF-8");
+assert.match(requestValidationSource, /Content-Type must be application\/json/, "messaging endpoints must require JSON content type");
 const conversationsSource = readFileSync(new URL("../src/app/api/messages/conversations/route.js", import.meta.url), "utf8");
+assert.match(conversationsSource, /readJsonObject\(request\)/, "conversation creation must use bounded JSON parsing");
 assert.match(conversationsSource, /getSessionFromRequest\(request\)/, "messaging APIs must verify the signed application session");
 assert.match(conversationsSource, /created_by: session\.sub/, "new conversations must be bound to their creator");
 assert.match(conversationsSource, /participantIds\.length > 49/, "conversation creation must cap participant count");
 const messagesSource = readFileSync(new URL("../src/app/api/messages/[conversationId]/route.js", import.meta.url), "utf8");
 assert.match(messagesSource, /getSessionFromRequest\(request\)/, "message reads and sends must verify the signed application session");
 assert.match(messagesSource, /getParticipant\(admin, conversationId, session\.sub\)/, "message access must require conversation membership");
+assert.match(messagesSource, /readJsonObject\(request\)/, "message creation must use bounded JSON parsing");
+assert.match(messagesSource, /limit > 100/, "message history must cap page size at 100");
+assert.match(messagesSource, /\.range\(page \* limit, page \* limit \+ limit\)/, "message history must fetch one extra row to detect another page");
+assert.match(messagesSource, /pagination: \{ page, limit, hasMore \}/, "message history must expose pagination metadata");
 const messagingMigration = readFileSync(new URL("../supabase/migrations/202611090001_messaging.sql", import.meta.url), "utf8");
 assert.match(messagingMigration, /private\.is_conversation_participant/, "message RLS must use the private membership helper");
 assert.match(messagingMigration, /private\.can_add_conversation_participant/, "participant insertion must be limited to conversation creators");
@@ -266,6 +276,6 @@ assert.match(vacancyPublishedSource, /payload\.companyId\.length > 128/, "publis
 assert.match(vacancyPublishedSource, /WORKBRIDGE_N8N_INBOUND_SECRET/, "published vacancy callbacks must require the shared n8n secret");
 assert.match(vacancyPublishedSource, /x-workbridge-secret/, "published vacancy callbacks must authenticate to the n8n webhook");
 assert.match(vacancyPublishedSource, /Buffer\.byteLength\(webhookSecret, "utf8"\) < 32/, "published vacancy callbacks must reject weak webhook secrets");
-count += 17;
+count += 24;
 
 console.log("Security regression checks passed: " + count);
