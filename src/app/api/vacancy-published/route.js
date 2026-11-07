@@ -3,6 +3,47 @@ import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
+const MAX_REQUEST_BODY_BYTES = 16 * 1024;
+
+async function readJsonObject(request) {
+  const contentType = request.headers.get("content-type") || "";
+  if (!/^application\\/json(?:\\s*;|$)/i.test(contentType)) {
+    return { ok: false, status: 415, error: "Content-Type must be application/json." };
+  }
+
+  const declaredLength = request.headers.get("content-length");
+  if (declaredLength && (!/^\\d+$/.test(declaredLength) || Number(declaredLength) > MAX_REQUEST_BODY_BYTES)) {
+    return { ok: false, status: 413, error: "Request payload is too large." };
+  }
+
+  const reader = request.body?.getReader();
+  if (!reader) return { ok: false, status: 400, error: "A valid JSON object is required." };
+
+  const chunks = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_REQUEST_BODY_BYTES) {
+        await reader.cancel();
+        return { ok: false, status: 413, error: "Request payload is too large." };
+      }
+      chunks.push(Buffer.from(value));
+    }
+
+    const rawBody = new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks, totalBytes));
+    const payload = JSON.parse(rawBody);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      return { ok: false, status: 400, error: "A JSON object payload is required." };
+    }
+    return { ok: true, payload };
+  } catch {
+    return { ok: false, status: 400, error: "A valid JSON object is required." };
+  }
+}
+
 export async function POST(request) {
   // Defense in depth: a preview sharing the live database must never trigger
   // live vacancy promotion workflows, even if the endpoint is called directly.
@@ -21,12 +62,16 @@ export async function POST(request) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
 
-  let payload;
-  try { payload = await request.json(); }
-  catch { return NextResponse.json({ error: "A valid JSON payload is required." }, { status: 400 }); }
-
-  if (!payload || typeof payload.jobId !== "string" || typeof payload.companyId !== "string") {
-    return NextResponse.json({ error: "jobId and companyId are required." }, { status: 400 });
+  const parsedBody = await readJsonObject(request);
+  if (!parsedBody.ok) {
+    return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+  }
+  const payload = parsedBody.payload;
+  if (
+    typeof payload.jobId !== "string" || !payload.jobId.trim() || payload.jobId.length > 128 ||
+    typeof payload.companyId !== "string" || !payload.companyId.trim() || payload.companyId.length > 128
+  ) {
+    return NextResponse.json({ error: "Valid jobId and companyId values are required." }, { status: 400 });
   }
 
   const supabase = createClient(url, key, {
