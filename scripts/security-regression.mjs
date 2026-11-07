@@ -154,6 +154,9 @@ const inviteCreateSource = readFileSync(new URL("../src/app/api/orgs/[id]/invite
 assert.match(inviteCreateSource, /getSessionFromRequest\(request\)/, "invite creation must verify the signed application session");
 assert.match(inviteCreateSource, /membership\.role !== "owner"/, "only owners may grant the admin role");
 const orgRouteSource = readFileSync(new URL("../src/app/api/orgs/route.js", import.meta.url), "utf8");
+assert.match(orgRouteSource, /readJsonObject\(request\)/, "organization creation must use bounded JSON parsing");
+const orgInviteRouteSource = readFileSync(new URL("../src/app/api/orgs/[id]/invite/route.js", import.meta.url), "utf8");
+assert.match(orgInviteRouteSource, /readJsonObject\(request\)/, "organization invitations must use bounded JSON parsing");
 assert.match(orgRouteSource, /getSessionFromRequest\(request\)/, "organization APIs must verify the signed application session");
 assert.match(orgRouteSource, /crypto\.randomBytes/, "organization slugs must use cryptographic randomness");
 const requestValidationSource = readFileSync(new URL("../src/lib/requestValidation.js", import.meta.url), "utf8");
