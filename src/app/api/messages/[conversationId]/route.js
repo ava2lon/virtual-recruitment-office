@@ -38,12 +38,12 @@ export async function GET(request, { params }) {
   const { data: pageMessages, error } = await admin.from("messages")
     .select("id,sender_id,body,created_at,edited_at")
     .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true })
-    .order("id", { ascending: true })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .range(page * limit, page * limit + limit);
   if (error) return NextResponse.json({ error: "Could not load messages." }, { status: 500 });
   const hasMore = (pageMessages || []).length > limit;
-  const messages = (pageMessages || []).slice(0, limit);
+  const messages = (pageMessages || []).slice(0, limit).reverse();
 
   await admin.from("conversation_participants")
     .update({ last_read_at: new Date().toISOString() })
