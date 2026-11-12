@@ -5,6 +5,9 @@ import { getSupabase } from "../../lib/supabase";
 
 export default function MessagesPage() {
   const [conversations, setConversations] = useState([]);
+  const [conversationCursor, setConversationCursor] = useState(null);
+  const [hasOlderConversations, setHasOlderConversations] = useState(false);
+  const [loadingMoreConversations, setLoadingMoreConversations] = useState(false);
   const [activeId, setActiveId] = useState("");
   const [messages, setMessages] = useState([]);
   const [olderCursor, setOlderCursor] = useState(null);
@@ -30,21 +33,31 @@ export default function MessagesPage() {
     return res;
   }, [token]);
 
-  const loadConversations = useCallback(async () => {
-    setLoading(true);
+  const loadConversations = useCallback(async (cursor = null, append = false) => {
+    if (append) setLoadingMoreConversations(true);
+    else setLoading(true);
     setError("");
     try {
-      const res = await api("/api/messages/conversations");
+      const params = new URLSearchParams({ limit: "30" });
+      if (cursor) {
+        params.set("beforeUpdatedAt", cursor.beforeUpdatedAt);
+        params.set("beforeId", cursor.beforeId);
+      }
+      const res = await api("/api/messages/conversations?" + params.toString());
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "load_failed");
-      setConversations(data.conversations || []);
-      if (!activeId && data.conversations?.length) setActiveId(data.conversations[0].id);
+      const page = data.conversations || [];
+      setConversations((prev) => append ? [...prev, ...page] : page);
+      setConversationCursor(data.pagination?.nextCursor || null);
+      setHasOlderConversations(Boolean(data.pagination?.hasMore && data.pagination?.nextCursor));
+      if (!append && page.length) setActiveId((current) => current || page[0].id);
     } catch (e) {
       setError(e.message || "Could not load conversations.");
     } finally {
       setLoading(false);
+      setLoadingMoreConversations(false);
     }
-  }, [api, activeId]);
+  }, [api]);
 
   const loadMessages = useCallback(async (id, cursor = null, append = false) => {
     if (!id) return;
@@ -169,6 +182,17 @@ export default function MessagesPage() {
               </li>
             ))}
           </ul>
+          {hasOlderConversations && (
+            <button
+              type="button"
+              className="button button-secondary"
+              disabled={loadingMoreConversations}
+              onClick={() => loadConversations(conversationCursor, true)}
+              style={{ width: "100%", marginTop: "0.5rem" }}
+            >
+              {loadingMoreConversations ? "Loading…" : "Load older conversations"}
+            </button>
+          )}
         </aside>
 
         <div className="wb-card" style={{ display: "flex", flexDirection: "column" }}>
