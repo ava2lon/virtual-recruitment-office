@@ -181,8 +181,9 @@ assert.match(messagesSource, /\.limit\(limit \+ 1\)/, "message history must fetc
 assert.match(messagesSource, /nextCursor/ , "message history must return the next cursor");
 assert.match(messagesSource, /validCursorDate/ , "message history must validate cursor timestamps");
 assert.match(messagesSource, /uuidPattern\.test\(rawCursorId\)/, "message history must validate cursor IDs");
-assert.match(messagesSource, /setOlderCursor\(data\.pagination\?\.nextCursor \|\| null\)/, "message UI must retain the server cursor");
-assert.match(messagesSource, /loadMessages\(activeId, olderCursor, true\)/, "message UI must request older messages by cursor");
+const messagesPageSource = readFileSync(new URL("../src/app/messages/page.js", import.meta.url), "utf8");
+assert.match(messagesPageSource, /setOlderCursor\(data\.pagination\?\.nextCursor \|\| null\)/, "message UI must retain the server cursor");
+assert.match(messagesPageSource, /loadMessages\(activeId, olderCursor, true\)/, "message UI must request older messages by cursor");
 const rlsOptimizationMigration = readFileSync(new URL("../supabase/migrations/202611170003_rls_auth_initplan_optimization.sql", import.meta.url), "utf8");
 assert.equal((rlsOptimizationMigration.match(/\(select auth\.uid\(\)\)/g) || []).length, 9, "optimized RLS policies must wrap each auth.uid lookup in a scalar subquery");
 assert.match(rlsOptimizationMigration, /drop policy if exists "messages insert by participants"/, "message insert policy must be safely replaced");
