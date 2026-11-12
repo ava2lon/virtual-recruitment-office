@@ -289,6 +289,8 @@ const n8nEventsSource = readFileSync(new URL("../src/app/api/n8n/events/route.js
 const n8nDeadLetterSource = readFileSync(new URL("../src/app/api/n8n/dead-letter/route.js", import.meta.url), "utf8");
 const n8nReplayMigration = readFileSync(new URL("../supabase/migrations/202611160001_n8n_webhook_replay_protection.sql", import.meta.url), "utf8");
 const n8nEventMigration = readFileSync(new URL("../supabase/migrations/202611170004_durable_n8n_event_ingestion.sql", import.meta.url), "utf8");
+const rateLimitSource = readFileSync(new URL("../src/lib/rateLimit.js", import.meta.url), "utf8");
+const rateLimitMigration = readFileSync(new URL("../supabase/migrations/202611170005_distributed_api_rate_limits.sql", import.meta.url), "utf8");
 const vacancyPublishedSource = readFileSync(new URL("../src/app/api/vacancy-published/route.js", import.meta.url), "utf8");
 assert.match(n8nAuthSource, /createHmac\("sha256"/, "n8n callbacks must use HMAC-SHA256 signatures");
 assert.match(n8nAuthSource, /timingSafeEqual/, "n8n signatures must use constant-time comparison");
@@ -308,6 +310,16 @@ assert.match(n8nEventMigration, /revoke all on public\.workflow_events from publ
 assert.match(n8nEventMigration, /workflow_events_event_idempotency_uidx/, "inbound workflow events must have a unique idempotency index");
 assert.match(n8nEventMigration, /workflow_dead_letters_event_idempotency_uidx/, "dead-letter events must have a unique idempotency index");
 assert.doesNotMatch(n8nEventsSource + n8nDeadLetterSource, /x-workbridge-secret/, "n8n callbacks must not accept the legacy static secret header");
+assert.match(rateLimitSource, /rpc\("consume_api_rate_limit"/, "rate limits must use the shared atomic database function");
+assert.doesNotMatch(rateLimitSource, /new Map\(/, "rate limits must not rely on per-instance memory");
+assert.match(n8nEventsSource, /verifyN8nWebhookRequest\(request\)[\s\S]*consumeRateLimit\("n8n-events"/, "event rate limits must be applied after signature verification");
+assert.match(n8nDeadLetterSource, /verifyN8nWebhookRequest\(request\)[\s\S]*consumeRateLimit\("n8n-dead-letter"/, "dead-letter rate limits must be applied after signature verification");
+assert.match(n8nEventsSource + n8nDeadLetterSource, /"Retry-After"/, "rate-limited webhook responses must include Retry-After");
+assert.match(rateLimitMigration, /enable row level security/i, "rate-limit buckets must enable RLS");
+assert.match(rateLimitMigration, /revoke all on public\.api_rate_limit_buckets from public, anon, authenticated/i, "rate-limit buckets must be server-only");
+assert.match(rateLimitMigration, /security invoker/i, "rate-limit RPC must not bypass RLS");
+assert.match(rateLimitMigration, /grant execute on function public\.consume_api_rate_limit[\s\S]*to service_role/i, "only service_role may invoke the rate-limit RPC");
+assert.match(rateLimitMigration, /on conflict \(bucket_key, window_start\)[\s\S]*hit_count = current_bucket\.hit_count \+ 1/i, "rate-limit increments must be atomic");
 assert.match(n8nReplayMigration, /nonce_hash text primary key/i, "n8n nonce storage must enforce uniqueness");
 assert.match(n8nReplayMigration, /enable row level security/i, "n8n nonce storage must enable RLS");
 assert.match(n8nReplayMigration, /revoke all on public\.n8n_webhook_nonces from public, anon, authenticated/i, "n8n nonce storage must be server-only");
