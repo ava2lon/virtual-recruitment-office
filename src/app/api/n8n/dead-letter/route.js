@@ -1,19 +1,28 @@
 import { NextResponse } from "next/server";
-import { rateLimit, clientKey } from "../../../../lib/rateLimit";
+import { consumeRateLimit } from "../../../../lib/rateLimit";
 import { verifyN8nWebhookRequest } from "../../../../lib/n8nWebhookAuth";
 import { getSupabaseAdmin } from "../../../../lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 
 export async function POST(request) {
-  const limit = rateLimit("n8n-deadletter:" + clientKey(request), { limit: 60, windowMs: 60_000 });
-  if (!limit.allowed) {
-    return NextResponse.json({ error: "Too many requests." }, { status: 429 });
-  }
-
   const verification = await verifyN8nWebhookRequest(request);
   if (!verification.ok) {
     return NextResponse.json({ error: verification.error }, { status: verification.status });
+  }
+
+  let limit;
+  try {
+    limit = await consumeRateLimit("n8n-dead-letter", { limit: 60, windowSeconds: 60 });
+  } catch {
+    return NextResponse.json({ error: "Rate-limit protection is temporarily unavailable." }, { status: 503 });
+  }
+  if (!limit.allowed) {
+    const retryAfter = Math.max(1, Math.ceil((Date.parse(limit.resetAt) - Date.now()) / 1000));
+    return NextResponse.json(
+      { error: "Too many requests." },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } }
+    );
   }
 
   const { payload } = verification;
