@@ -180,6 +180,7 @@ assert.match(messagesSource, /query\.or\(/, "message history must use a stable c
 assert.match(messagesSource, /\.limit\(limit \+ 1\)/, "message history must fetch one extra row to detect another page");
 assert.match(messagesSource, /nextCursor/ , "message history must return the next cursor");
 assert.match(messagesSource, /validCursorDate/ , "message history must validate cursor timestamps");
+assert.match(messagesSource, /cursorTimestampPattern = \/\^\\d\{4\}/, "message cursor timestamps must use a strict ISO-8601 allowlist");
 assert.match(messagesSource, /uuidPattern\.test\(rawCursorId\)/, "message history must validate cursor IDs");
 const messagesPageSource = readFileSync(new URL("../src/app/messages/page.js", import.meta.url), "utf8");
 assert.match(messagesPageSource, /setOlderCursor\(data\.pagination\?\.nextCursor \|\| null\)/, "message UI must retain the server cursor");
