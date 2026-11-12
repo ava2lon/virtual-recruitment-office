@@ -9,41 +9,60 @@ export async function GET(request) {
   const session = getSessionFromRequest(request);
   if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
 
+  const url = new URL(request.url);
+  const rawLimit = url.searchParams.get("limit");
+  const rawBeforeUpdatedAt = url.searchParams.get("beforeUpdatedAt");
+  const rawBeforeId = url.searchParams.get("beforeId");
+  const limit = rawLimit === null ? 30 : Number(rawLimit);
+  const hasCursorPart = rawBeforeUpdatedAt !== null || rawBeforeId !== null;
+  const cursorDate = rawBeforeUpdatedAt === null ? null : new Date(rawBeforeUpdatedAt);
+  const cursorTimestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/;
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const validCursorDate = rawBeforeUpdatedAt !== null &&
+    cursorTimestampPattern.test(rawBeforeUpdatedAt) && Number.isFinite(cursorDate.getTime());
+
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100 ||
+      (hasCursorPart && (!rawBeforeUpdatedAt || !rawBeforeId || !validCursorDate || !uuidPattern.test(rawBeforeId)))) {
+    return NextResponse.json({ error: "Pagination requires limit 1-100 and a valid beforeUpdatedAt/beforeId cursor pair." }, { status: 400 });
+  }
+
   let admin;
   try { admin = getSupabaseAdmin(); }
   catch { return NextResponse.json({ error: "Messaging service is not configured." }, { status: 503 }); }
 
-  const { data: participations, error: participationError } = await admin
-    .from("conversation_participants")
-    .select("conversation_id,last_read_at,conversations(id,subject,created_at,updated_at)")
-    .eq("user_id", session.sub);
-  if (participationError) return NextResponse.json({ error: "Could not load conversations." }, { status: 500 });
+  const { data: rows, error } = await admin.rpc("list_user_conversations", {
+    p_user_id: session.sub,
+    p_limit: limit,
+    p_before_updated_at: rawBeforeUpdatedAt,
+    p_before_id: rawBeforeId,
+  });
+  if (error) return NextResponse.json({ error: "Could not load conversations." }, { status: 500 });
 
-  const ids = (participations || []).map((p) => p.conversation_id);
-  if (ids.length === 0) return NextResponse.json({ conversations: [] });
-
-  const { data: lastMessages, error: messageError } = await admin
-    .from("messages")
-    .select("id,conversation_id,body,created_at,sender_id")
-    .in("conversation_id", ids)
-    .order("created_at", { ascending: false });
-  if (messageError) return NextResponse.json({ error: "Could not load conversation activity." }, { status: 500 });
-
-  const latestByConv = {};
-  for (const message of lastMessages || []) {
-    if (!latestByConv[message.conversation_id]) latestByConv[message.conversation_id] = message;
-  }
-
-  const conversations = (participations || []).map((p) => ({
-    id: p.conversation_id,
-    subject: p.conversations?.subject || "Conversation",
-    updated_at: p.conversations?.updated_at,
-    last_message: latestByConv[p.conversation_id] || null,
-    last_read_at: p.last_read_at,
+  const pageRows = rows || [];
+  const hasMore = pageRows.length > limit;
+  const selectedRows = pageRows.slice(0, limit);
+  const conversations = selectedRows.map((row) => ({
+    id: row.conversation_id,
+    subject: row.subject || "Conversation",
+    updated_at: row.updated_at,
+    last_message: row.last_message_id ? {
+      id: row.last_message_id,
+      body: row.last_message_body,
+      created_at: row.last_message_created_at,
+      sender_id: row.last_message_sender_id,
+    } : null,
+    last_read_at: row.last_read_at,
   }));
-  return NextResponse.json({ conversations });
-}
+  const oldest = selectedRows[selectedRows.length - 1];
+  const nextCursor = hasMore && oldest
+    ? { beforeUpdatedAt: oldest.updated_at, beforeId: oldest.conversation_id }
+    : null;
 
+  return NextResponse.json({
+    conversations,
+    pagination: { limit, hasMore, nextCursor },
+  });
+}
 export async function POST(request) {
   const session = getSessionFromRequest(request);
   if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
