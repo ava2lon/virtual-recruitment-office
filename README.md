@@ -148,7 +148,7 @@ The signature is:
 hex(HMAC-SHA256(WORKBRIDGE_N8N_INBOUND_SECRET, signing-input))
 ```
 
-Requests must be within five minutes of server time, have a JSON object body, and be no larger than 256 KiB. A nonce can only be accepted once; nonce hashes are stored in the server-only `n8n_webhook_nonces` Supabase table. The sender must generate a new nonce and signature for every retry. Do not reuse a signature after a timeout. Accepted events are durably stored in the server-only `workflow_events` table; dead-letter submissions are stored in `workflow_dead_letters`. Both endpoints enforce idempotency on `(event, idempotencyKey)` when a key is supplied.
+Requests must be within five minutes of server time, have a JSON object body, and be no larger than 256 KiB. A nonce can only be accepted once; nonce hashes are stored in the server-only `n8n_webhook_nonces` Supabase table. The sender must generate a new nonce and signature for every retry. Do not reuse a signature after a timeout. Accepted events are durably stored in the server-only `workflow_events` table; dead-letter submissions are stored in `workflow_dead_letters`. Both endpoints enforce idempotency on `(event, idempotencyKey)` when a key is supplied. They also apply a shared Supabase-backed fixed-window limit of 60 authenticated requests per minute per endpoint (global across sender instances); rate-limit state is updated atomically in Postgres. A rejected request returns HTTP 429 with `Retry-After`. If the shared limiter is unavailable, the endpoints fail closed with HTTP 503.
 
 ### CI and test-only configuration
 
