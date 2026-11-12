@@ -34,7 +34,9 @@ export async function GET(request, { params }) {
   const limit = rawLimit === null ? 50 : Number(rawLimit);
   const hasCursorPart = rawCursorCreatedAt !== null || rawCursorId !== null;
   const cursorDate = rawCursorCreatedAt === null ? null : new Date(rawCursorCreatedAt);
-  const validCursorDate = cursorDate && Number.isFinite(cursorDate.getTime()) && cursorDate.toISOString() === rawCursorCreatedAt;
+  const cursorTimestampPattern = /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$/;
+  const validCursorDate = rawCursorCreatedAt !== null && cursorTimestampPattern.test(rawCursorCreatedAt) &&
+    Number.isFinite(cursorDate.getTime());
   if (!Number.isInteger(limit) || limit < 1 || limit > 100 ||
       (hasCursorPart && (!rawCursorCreatedAt || !rawCursorId || !validCursorDate || !uuidPattern.test(rawCursorId)))) {
     return NextResponse.json({ error: "Pagination requires limit 1-100 and a valid beforeCreatedAt/beforeId cursor pair." }, { status: 400 });
