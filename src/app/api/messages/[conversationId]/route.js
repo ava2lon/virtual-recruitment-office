@@ -29,28 +29,41 @@ export async function GET(request, { params }) {
 
   const url = new URL(request.url);
   const rawLimit = url.searchParams.get("limit");
-  const rawPage = url.searchParams.get("page");
+  const rawCursorCreatedAt = url.searchParams.get("beforeCreatedAt");
+  const rawCursorId = url.searchParams.get("beforeId");
   const limit = rawLimit === null ? 50 : Number(rawLimit);
-  const page = rawPage === null ? 0 : Number(rawPage);
-  if (!Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isInteger(page) || page < 0 || page > 10000) {
-    return NextResponse.json({ error: "Pagination must use limit 1-100 and page 0-10000." }, { status: 400 });
+  const hasCursorPart = rawCursorCreatedAt !== null || rawCursorId !== null;
+  const cursorDate = rawCursorCreatedAt === null ? null : new Date(rawCursorCreatedAt);
+  const validCursorDate = cursorDate && Number.isFinite(cursorDate.getTime()) && cursorDate.toISOString() === rawCursorCreatedAt;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100 ||
+      (hasCursorPart && (!rawCursorCreatedAt || !rawCursorId || !validCursorDate || !uuidPattern.test(rawCursorId)))) {
+    return NextResponse.json({ error: "Pagination requires limit 1-100 and a valid beforeCreatedAt/beforeId cursor pair." }, { status: 400 });
   }
-  const { data: pageMessages, error } = await admin.from("messages")
+
+  let query = admin.from("messages")
     .select("id,sender_id,body,created_at,edited_at")
-    .eq("conversation_id", conversationId)
+    .eq("conversation_id", conversationId);
+  if (hasCursorPart) {
+    query = query.or(`created_at.lt.${rawCursorCreatedAt},and(created_at.eq.${rawCursorCreatedAt},id.lt.${rawCursorId})`);
+  }
+  const { data: pageMessages, error } = await query
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
-    .range(page * limit, page * limit + limit);
+    .limit(limit + 1);
   if (error) return NextResponse.json({ error: "Could not load messages." }, { status: 500 });
   const hasMore = (pageMessages || []).length > limit;
   const messages = (pageMessages || []).slice(0, limit).reverse();
+  const oldestMessage = messages[0];
+  const nextCursor = hasMore && oldestMessage
+    ? { beforeCreatedAt: oldestMessage.created_at, beforeId: oldestMessage.id }
+    : null;
 
   await admin.from("conversation_participants")
     .update({ last_read_at: new Date().toISOString() })
     .eq("conversation_id", conversationId)
     .eq("user_id", session.sub);
 
-  return NextResponse.json({ messages: messages || [], pagination: { page, limit, hasMore } });
+  return NextResponse.json({ messages: messages || [], pagination: { limit, hasMore, nextCursor } });
 }
 
 export async function POST(request, { params }) {
