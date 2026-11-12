@@ -7,7 +7,7 @@ export default function MessagesPage() {
   const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState("");
   const [messages, setMessages] = useState([]);
-  const [messagePage, setMessagePage] = useState(0);
+  const [olderCursor, setOlderCursor] = useState(null);
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [draft, setDraft] = useState("");
@@ -46,15 +46,20 @@ export default function MessagesPage() {
     }
   }, [api, activeId]);
 
-  const loadMessages = useCallback(async (id, page = 0, append = false) => {
+  const loadMessages = useCallback(async (id, cursor = null, append = false) => {
     if (!id) return;
     try {
-      const res = await api("/api/messages/" + id + "?page=" + page + "&limit=50");
+      const params = new URLSearchParams({ limit: "50" });
+      if (cursor) {
+        params.set("beforeCreatedAt", cursor.beforeCreatedAt);
+        params.set("beforeId", cursor.beforeId);
+      }
+      const res = await api("/api/messages/" + id + "?" + params.toString());
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "load_failed");
       setMessages((prev) => append ? [...(data.messages || []), ...prev] : (data.messages || []));
-      setMessagePage(page);
-      setHasOlderMessages(Boolean(data.pagination?.hasMore));
+      setOlderCursor(data.pagination?.nextCursor || null);
+      setHasOlderMessages(Boolean(data.pagination?.hasMore && data.pagination?.nextCursor));
       // fetch read receipts
       const supabase = getSupabase();
       const { data: session } = await supabase.auth.getSession();
@@ -75,9 +80,9 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!activeId) return;
     setMessages([]);
-    setMessagePage(0);
+    setOlderCursor(null);
     setHasOlderMessages(false);
-    loadMessages(activeId, 0, false);
+    loadMessages(activeId, null, false);
     const supabase = getSupabase();
     const channel = supabase
       .channel("presence:" + activeId, { config: { presence: { key: token || "anon" } } })
@@ -173,7 +178,7 @@ export default function MessagesPage() {
             <>
               <div style={{ flex: 1, overflowY: "auto", display: "grid", gap: "0.5rem", padding: "0.5rem" }}>
                 {hasOlderMessages && (
-                  <button type="button" className="button button-secondary" disabled={loadingOlder} onClick={() => { setLoadingOlder(true); loadMessages(activeId, messagePage + 1, true); }}>
+                  <button type="button" className="button button-secondary" disabled={loadingOlder} onClick={() => { setLoadingOlder(true); loadMessages(activeId, olderCursor, true); }}>
                     {loadingOlder ? "Loading older messages…" : "Load older messages"}
                   </button>
                 )}
