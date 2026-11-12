@@ -174,8 +174,15 @@ assert.match(messagesSource, /getSessionFromRequest\(request\)/, "message reads 
 assert.match(messagesSource, /getParticipant\(admin, conversationId, session\.sub\)/, "message access must require conversation membership");
 assert.match(messagesSource, /readJsonObject\(request\)/, "message creation must use bounded JSON parsing");
 assert.match(messagesSource, /limit > 100/, "message history must cap page size at 100");
-assert.match(messagesSource, /\.range\(page \* limit, page \* limit \+ limit\)/, "message history must fetch one extra row to detect another page");
-assert.match(messagesSource, /pagination: \{ page, limit, hasMore \}/, "message history must expose pagination metadata");
+assert.match(messagesSource, /beforeCreatedAt/ , "message history must accept a timestamp cursor");
+assert.match(messagesSource, /beforeId/ , "message history must accept a deterministic ID cursor");
+assert.match(messagesSource, /query\.or\(/, "message history must use a stable compound cursor predicate");
+assert.match(messagesSource, /\.limit\(limit \+ 1\)/, "message history must fetch one extra row to detect another page");
+assert.match(messagesSource, /nextCursor/ , "message history must return the next cursor");
+assert.match(messagesSource, /validCursorDate/ , "message history must validate cursor timestamps");
+assert.match(messagesSource, /uuidPattern\.test\(rawCursorId\)/, "message history must validate cursor IDs");
+assert.match(messagesSource, /setOlderCursor\(data\.pagination\?\.nextCursor \|\| null\)/, "message UI must retain the server cursor");
+assert.match(messagesSource, /loadMessages\(activeId, olderCursor, true\)/, "message UI must request older messages by cursor");
 const rlsOptimizationMigration = readFileSync(new URL("../supabase/migrations/202611170003_rls_auth_initplan_optimization.sql", import.meta.url), "utf8");
 assert.equal((rlsOptimizationMigration.match(/\(select auth\.uid\(\)\)/g) || []).length, 9, "optimized RLS policies must wrap each auth.uid lookup in a scalar subquery");
 assert.match(rlsOptimizationMigration, /drop policy if exists "messages insert by participants"/, "message insert policy must be safely replaced");
