@@ -1,21 +1,36 @@
-const buckets = new Map();
+import { getSupabaseAdmin } from "./supabaseAdmin";
 
-export function rateLimit(key, { limit = 30, windowMs = 60_000 } = {}) {
-  const now = Date.now();
-  const entry = buckets.get(key);
-  if (!entry || entry.resetAt <= now) {
-    buckets.set(key, { count: 1, resetAt: now + windowMs });
-    return { allowed: true, remaining: limit - 1 };
+/**
+ * Consume one request from a shared, database-backed fixed-window bucket.
+ * The database UPSERT is atomic across concurrent/serverless instances.
+ * Storage errors are thrown so callers can fail closed instead of silently
+ * reverting to a per-instance in-memory limiter.
+ */
+export async function consumeRateLimit(bucketKey, { limit = 30, windowSeconds = 60 } = {}) {
+  if (typeof bucketKey !== "string" || !bucketKey || bucketKey.length > 128) {
+    throw new TypeError("A valid rate-limit bucket key is required.");
   }
-  if (entry.count >= limit) {
-    return { allowed: false, remaining: 0, resetAt: entry.resetAt };
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100000 ||
+      !Number.isInteger(windowSeconds) || windowSeconds < 1 || windowSeconds > 86400) {
+    throw new RangeError("Invalid rate-limit configuration.");
   }
-  entry.count += 1;
-  return { allowed: true, remaining: limit - entry.count };
-}
 
-export function clientKey(request) {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return request.headers.get("x-real-ip") || "unknown";
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin.rpc("consume_api_rate_limit", {
+    p_bucket_key: bucketKey,
+    p_limit: limit,
+    p_window_seconds: windowSeconds,
+  });
+  if (error) throw new Error("Shared rate-limit storage is unavailable.");
+
+  const result = Array.isArray(data) ? data[0] : data;
+  if (!result || typeof result.allowed !== "boolean" || !result.reset_at) {
+    throw new Error("Shared rate-limit storage returned an invalid result.");
+  }
+
+  return {
+    allowed: result.allowed,
+    remaining: Number(result.remaining),
+    resetAt: result.reset_at,
+  };
 }
