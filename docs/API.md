@@ -50,7 +50,7 @@
 - Shared rate limit: 60 authenticated requests per minute across all application instances for this endpoint. HTTP 429 includes `Retry-After`; unavailable rate-limit storage fails closed with HTTP 503.
 
 ## Messaging
-- `GET /api/messages/conversations` — list conversations for the authenticated user.
+- `GET /api/messages/conversations?limit=30` — list the newest conversations for the authenticated user. For older pages, pass both `beforeUpdatedAt=<ISO-8601 timestamp>` and `beforeId=<conversation UUID>` from `pagination.nextCursor`. The server returns at most 100 conversations per page and retrieves only the latest message preview for each conversation.
 - `POST /api/messages/conversations` — create a conversation. JSON request body limit: 16 KiB.
 - `GET /api/messages/:conversationId?limit=50` — read the newest message page. For older messages, pass both `beforeCreatedAt=<ISO-8601 timestamp>` and `beforeId=<message UUID>` from `pagination.nextCursor`. Messages are returned in chronological order, `limit` is 1-100, and `pagination.hasMore` indicates older pages.
 - `POST /api/messages/:conversationId` — send a message. JSON request body limit: 16 KiB; message text limit: 10,000 characters.
