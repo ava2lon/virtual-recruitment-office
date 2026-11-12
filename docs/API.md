@@ -31,6 +31,7 @@
 - `event` is required (1-128 characters); `idempotencyKey` is optional (1-128 characters); `payload` must be a JSON object.
 - Request body limit: 256 KiB; timestamp tolerance: ±5 minutes.
 - Accepted events are persisted in the server-only `workflow_events` table. A repeated `(event, idempotencyKey)` returns HTTP 200 with `duplicate: true`; a new event returns HTTP 202 with `eventId`.
+- Shared rate limit: 60 authenticated requests per minute across all application instances for this endpoint. HTTP 429 includes `Retry-After`; unavailable rate-limit storage fails closed with HTTP 503.
 
 ## Dead-letter persistence
 - `POST /api/n8n/dead-letter`
@@ -46,11 +47,12 @@
   ```
 - `event` is required (1-128 characters); `idempotencyKey` is optional (1-128 characters); `payload` must be a JSON object; `error` is optional (maximum 4000 characters).
 - Failures are persisted in the server-only `workflow_dead_letters` table. Duplicate keys return HTTP 200 with `duplicate: true`; new records return HTTP 202 with `deadLetterId` and initial status `open`.
+- Shared rate limit: 60 authenticated requests per minute across all application instances for this endpoint. HTTP 429 includes `Retry-After`; unavailable rate-limit storage fails closed with HTTP 503.
 
 ## Messaging
 - `GET /api/messages/conversations` — list conversations for the authenticated user.
 - `POST /api/messages/conversations` — create a conversation. JSON request body limit: 16 KiB.
-- `GET /api/messages/:conversationId?limit=50&page=0` — read a page of messages. The newest page is page 0, messages are returned in chronological order, `limit` is 1-100, and `pagination.hasMore` indicates older pages.
+- `GET /api/messages/:conversationId?limit=50` — read the newest message page. For older messages, pass both `beforeCreatedAt=<ISO-8601 timestamp>` and `beforeId=<message UUID>` from `pagination.nextCursor`. Messages are returned in chronological order, `limit` is 1-100, and `pagination.hasMore` indicates older pages.
 - `POST /api/messages/:conversationId` — send a message. JSON request body limit: 16 KiB; message text limit: 10,000 characters.
 - All message operations require a valid application session and conversation membership.
 
