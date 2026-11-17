@@ -15,7 +15,7 @@ WorkBridge is a recruitment platform connecting candidates and employers.
 ## Features
 
 - Candidate application tracker with private follow-up notes.
-- Employer vacancy publishing with automated social-copy workflow.
+- n8n-first employer vacancy intake, AI-assisted drafting, employer approval, Supabase publication, and social-copy review.
 - Hiring pipeline board grouped by stage.
 - Candidate analytics dashboard.
 - Dark/light theme with design tokens.
@@ -107,7 +107,9 @@ Configure the IdP with the WorkBridge metadata from `https://<your-origin>/api/a
 
 | Variable | Required | Description |
 |---|---|---|
-| `WORKBRIDGE_N8N_VACANCY_WEBHOOK_URL` | Optional; required to send published-vacancy events to n8n | Full HTTPS production webhook URL for the n8n **WorkBridge — Published Vacancy Social Drafts** workflow. If omitted, the vacancy is published without queueing social-copy automation. |
+| `WORKBRIDGE_N8N_VACANCY_INTAKE_WEBHOOK_URL` | Required for employer vacancy submission | Full HTTPS production URL copied from the **Portal Vacancy Intake** node in **WorkBridge — Slack Vacancy Intake & AI Draft**. Keep it server-side; its high-entropy path is the webhook authentication token. |
+| `WORKBRIDGE_N8N_VACANCY_APPROVAL_WEBHOOK_URL` | Required for employer approval and publication | Full HTTPS production URL copied from the **Portal Vacancy Approval** node in the same workflow. Keep it server-side; its high-entropy path is the webhook authentication token. |
+| `WORKBRIDGE_N8N_VACANCY_WEBHOOK_URL` | Optional; legacy compatibility | Full HTTPS production URL for **WorkBridge — Published Vacancy Social Drafts**, used only by the legacy `/api/vacancy-published` endpoint. The new n8n-first flow invokes this workflow directly from n8n. |
 | `WORKBRIDGE_N8N_INBOUND_SECRET` | Required when n8n callbacks or vacancy webhook integration are enabled | Shared secret with at least 32 UTF-8 bytes. Use a high-entropy random value and configure the same value on the sending and receiving sides. |
 
 Generate a shared secret with:
@@ -116,18 +118,11 @@ Generate a shared secret with:
 openssl rand -hex 32
 ```
 
-**Published-vacancy webhook:** the `/api/vacancy-published` application route sends the `x-workbridge-secret` header with `WORKBRIDGE_N8N_INBOUND_SECRET` to the configured n8n webhook URL. Create a dedicated n8n credential with these exact settings:
+**n8n-first vacancy workflow:** the employer dashboard calls `/api/vacancy-submit` and `/api/vacancy-approve`. Both endpoints require a valid Supabase access token and verify the user's company membership; organization membership is also checked when an organization is selected. The application server forwards validated requests to the two server-only webhook URLs above. n8n creates jobs as `draft`; the employer must approve the draft in the Employer Workspace before n8n changes its status to `open`. After publication, n8n invokes the existing **WorkBridge — Published Vacancy Social Drafts** workflow. The workflow uses the existing Supabase and LiteLLM credentials and sends review notifications to the existing Slack channel.
 
-| Setting | Value |
-|---|---|
-| Credential type | `Header Auth` (`httpHeaderAuth`) |
-| Credential name | `WorkBridge Vacancy Webhook Auth` |
-| Header name | `x-workbridge-secret` |
-| Header value | The exact value of `WORKBRIDGE_N8N_INBOUND_SECRET` in the matching Vercel environment |
+The intake and approval webhook URLs use high-entropy, unguessable path tokens as server-to-server bearer secrets. Copy each Production URL directly from its n8n Webhook node into the matching Vercel server environment variable. Never expose either URL in browser code, a `NEXT_PUBLIC_` variable, Slack, or public documentation. The URLs must use HTTPS. Keep the n8n workflow active only after both URLs are configured in the application environment and the first authenticated end-to-end test succeeds.
 
-In n8n, open **Credentials → Add credential → Header Auth**, enter the settings above, and save. Then open the **Published Vacancy Webhook** node in **WorkBridge — Published Vacancy Social Drafts**, set **Authentication** to **Header Auth**, and select `WorkBridge Vacancy Webhook Auth`. Set the webhook method to `POST`, save the workflow, and copy its Production URL into `WORKBRIDGE_N8N_VACANCY_WEBHOOK_URL` in Vercel.
-
-Generate the secret locally with `openssl rand -hex 32`; paste it directly into the n8n credential and Vercel's encrypted environment-variable settings. Do not send it in chat, commit it, or put it in the webhook URL, query string, workflow payload, Slack messages, or execution logs. Use separate secrets and endpoints for staging and production. Keep the workflow inactive until the credential is attached and an authenticated test succeeds; then activate it. An unauthenticated request should be rejected.
+The legacy `/api/vacancy-published` endpoint remains available for compatibility. It uses `WORKBRIDGE_N8N_VACANCY_WEBHOOK_URL` and `WORKBRIDGE_N8N_INBOUND_SECRET` as described below; the new employer dashboard no longer inserts directly into `public.jobs` and does not use this legacy route.
 
 **Signed application callbacks:** the application routes `/api/n8n/events` and `/api/n8n/dead-letter` verify HMAC-SHA256 signatures using `WORKBRIDGE_N8N_INBOUND_SECRET`. Send the exact raw JSON body and these headers:
 
