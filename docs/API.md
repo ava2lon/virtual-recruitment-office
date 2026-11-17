@@ -4,7 +4,23 @@
 - `GET /api/health` → `{ status, service, timestamp }`
 - `GET /api/version` → service version, deployment commit, environment, timestamp.
 
-## Vacancy published (outbound trigger)
+## Employer vacancy automation
+- `POST /api/vacancy-submit`
+- Headers: `Authorization: Bearer <Supabase access token>`, `Content-Type: application/json`
+- Body: `{ "companyId": "<uuid>", "organizationId": "<uuid-or-null>", "job": { "job_title": "...", "description": "...", "location": "...", "employment_type": "Full-time", "required_skills": [] } }`
+- Request body limit: 16 KiB. Requires an authenticated user who is a member of the selected company; when `organizationId` is supplied, the user must also belong to that organization.
+- The server forwards the validated payload to the server-only `WORKBRIDGE_N8N_VACANCY_INTAKE_WEBHOOK_URL`. The n8n workflow uses AI to improve the description and creates the vacancy in `public.jobs` with status `draft`. The browser never inserts a job row.
+- Returns HTTP 202 when n8n accepts the request. The job remains hidden from public job listings until an employer approves it.
+
+- `POST /api/vacancy-approve`
+- Headers: `Authorization: Bearer <Supabase access token>`, `Content-Type: application/json`
+- Body: `{ "jobId": "<uuid>", "companyId": "<uuid>" }`
+- Requires an authenticated member of the company that owns the draft. The server reloads the job from Supabase and forwards the database-backed job details to `WORKBRIDGE_N8N_VACANCY_APPROVAL_WEBHOOK_URL`.
+- n8n changes only a matching `draft` job to `open`, then invokes the existing **WorkBridge — Published Vacancy Social Drafts** workflow. Returns HTTP 202 when the approval request is accepted; a repeated request for an already-open vacancy returns HTTP 200 with `alreadyPublished: true`.
+
+The two new n8n production webhook URLs contain high-entropy path tokens and are server-side bearer secrets. Store them only in Vercel server environment variables and local `.env.local`; never prefix them with `NEXT_PUBLIC_`, render them in the browser, or post them in Slack. Configure HTTPS production URLs copied from the corresponding webhook nodes in **WorkBridge — Slack Vacancy Intake & AI Draft**. The existing `WORKBRIDGE_N8N_VACANCY_WEBHOOK_URL` is retained for the legacy `/api/vacancy-published` endpoint.
+
+## Legacy vacancy-published outbound trigger
 - `POST /api/vacancy-published`
 - Headers: `Authorization: Bearer <Supabase access token>`, `Content-Type: application/json`
 - Body: `{ "jobId": "<uuid>", "companyId": "<uuid>" }`
