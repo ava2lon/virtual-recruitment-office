@@ -55,6 +55,7 @@ export default function EmployerPage() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [updatingId, setUpdatingId] = useState("");
+  const [approvingJobId, setApprovingJobId] = useState("");
 
   const load = useCallback(async () => {
     const supabase = getSupabase();
@@ -124,59 +125,76 @@ export default function EmployerPage() {
   async function publish(event) {
     event.preventDefault();
     if (previewReadOnly) { setMessage("This preview is read-only because it shares the live WorkBridge database. Publishing and candidate status changes are disabled here."); return; }
-    if (!companyId) { setMessage("Choose an employer workspace before publishing."); return; }
+    if (!companyId) { setMessage("Choose an employer workspace before submitting a vacancy."); return; }
     setBusy(true);
     setMessage("");
     try {
       const supabase = getSupabase();
-      const { data, error } = await supabase.from("jobs").insert({
-        company_id: companyId,
-        organization_id: organizationId || null,
-        job_title: title.trim(),
-        location: location.trim() || null,
-        employment_type: employmentType,
-        description: description.trim(),
-        required_skills: requiredSkills.split(",").map(value => value.trim()).filter(Boolean),
-        status: "open"
-      }).select("id,company_id,job_title").single();
-      if (error) throw error;
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!sessionData.session?.access_token) throw new Error("Your session has expired. Sign in again.");
 
-      let automationMessage = "Vacancy published on WorkBridge.";
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData.session?.access_token) {
-        try {
-          const response = await fetch("/api/vacancy-published", {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              authorization: "Bearer " + sessionData.session.access_token
-            },
-            body: JSON.stringify({ jobId: data.id, companyId: data.company_id })
-          });
-          const result = await response.json();
-          if (response.ok && result.automationQueued) {
-            automationMessage += " Social-copy draft sent to the configured review workflow.";
-          } else if (response.ok && !result.automationConfigured) {
-            automationMessage += " Social-copy automation will start once the n8n webhook is configured.";
-          } else if (result.warning) {
-            automationMessage += " " + result.warning;
-          } else if (!response.ok) {
-            automationMessage += " Social-copy automation needs configuration; the vacancy itself is live.";
+      const response = await fetch("/api/vacancy-submit", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer " + sessionData.session.access_token
+        },
+        body: JSON.stringify({
+          companyId,
+          organizationId: organizationId || null,
+          job: {
+            job_title: title.trim(),
+            location: location.trim() || null,
+            employment_type: employmentType,
+            description: description.trim(),
+            required_skills: requiredSkills.split(",").map(value => value.trim()).filter(Boolean)
           }
-        } catch {
-          automationMessage += " Social-copy automation could not be reached; the vacancy itself is live.";
-        }
-      }
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "n8n could not accept the vacancy.");
       setTitle("");
       setLocation("");
       setDescription("");
       setRequiredSkills("");
-      setMessage(automationMessage);
+      setMessage("Vacancy submitted to n8n for AI drafting. It will remain unpublished until you approve the draft in this workspace.");
       await load();
     } catch (error) {
-      setMessage("Could not publish vacancy: " + (error.message || "Check the job schema and employer permissions."));
+      setMessage("Could not submit vacancy: " + (error.message || "Check your employer permissions and n8n configuration."));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function approveVacancy(job) {
+    if (previewReadOnly || approvingJobId || job.status !== "draft") return;
+    setApprovingJobId(job.id);
+    setMessage("");
+    try {
+      const supabase = getSupabase();
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!sessionData.session?.access_token) throw new Error("Your session has expired. Sign in again.");
+
+      const response = await fetch("/api/vacancy-approve", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer " + sessionData.session.access_token
+        },
+        body: JSON.stringify({ jobId: job.id, companyId: job.company_id })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "n8n could not accept the approval.");
+      setMessage(result.alreadyPublished
+        ? "This vacancy is already live."
+        : "Approval sent to n8n. The vacancy will become visible to candidates when publication completes.");
+      await load();
+    } catch (error) {
+      setMessage("Could not approve vacancy: " + (error.message || "Check your employer permissions and n8n configuration."));
+    } finally {
+      setApprovingJobId("");
     }
   }
 
@@ -252,7 +270,7 @@ export default function EmployerPage() {
       <div className="employer-layout">
         <div className="dashboard-card">
           <div className="card-heading">
-            <div><h2>Publish a vacancy</h2><p>Live roles appear in Find jobs as soon as they are saved.</p></div>
+            <div><h2>Submit a vacancy</h2><p>n8n drafts each role. It stays unpublished until you approve it.</p></div>
             <span className="card-icon">＋</span>
           </div>
           <form className="form-stack" onSubmit={publish}>
@@ -262,7 +280,7 @@ export default function EmployerPage() {
             <label>Required skills <small>Optional; separate skills with commas.</small><input value={requiredSkills} onChange={event => setRequiredSkills(event.target.value)} placeholder="Customer service, communication" /></label>
             {organizations.length > 0 && <label>Organization <select value={organizationId} onChange={event => setOrganizationId(event.target.value)}>{organizations.map(org => <option key={org.id} value={org.id}>{org.name}</option>)}</select></label>}
             <label>Role description<textarea rows={5} value={description} onChange={event => setDescription(event.target.value)} placeholder="Responsibilities, requirements, and what success looks like…" required /></label>
-            <button className="button" disabled={previewReadOnly || busy || !user || !companyId}>{previewReadOnly ? "Publishing disabled in preview" : busy ? "Publishing…" : "Publish vacancy"}</button>
+            <button className="button" disabled={previewReadOnly || busy || !user || !companyId}>{previewReadOnly ? "Publishing disabled in preview" : busy ? "Submitting…" : "Submit for AI drafting"}</button>
           </form>
         </div>
 
@@ -276,6 +294,37 @@ export default function EmployerPage() {
           <a className="text-link" href="/matches">Browse public vacancies ↗</a>
         </aside>
       </div>
+
+      <section className="pipeline-section" aria-labelledby="vacancies-title">
+        <div className="pipeline-heading">
+          <div><span className="eyebrow">Vacancy management</span><h2 id="vacancies-title">Your vacancies</h2><p>Review AI-prepared drafts and approve the roles you want candidates to see.</p></div>
+          <span className="count-pill">{companyJobs.length} vacancies</span>
+        </div>
+        {!companyJobs.length ? (
+          <div className="empty-state"><h2>No vacancies submitted yet</h2><p>Submit a vacancy above. n8n will prepare a draft for your review.</p></div>
+        ) : (
+          <div className="job-list">
+            {companyJobs.map(job => (
+              <article className="job-card" key={job.id}>
+                <div className="job-logo">{(job.job_title || "J").charAt(0).toUpperCase()}</div>
+                <div className="job-main">
+                  <span className="job-type">{job.status === "open" ? "LIVE VACANCY" : job.status === "draft" ? "DRAFT — REVIEW REQUIRED" : String(job.status || "VACANCY").toUpperCase()}</span>
+                  <h2>{job.job_title}</h2>
+                  <p>{[job.location, job.employment_type].filter(Boolean).join(" · ") || "Location and employment type not specified"}</p>
+                  {job.status === "draft" && <p className="job-description">This draft is not visible to candidates. Review the description and approve it when ready.</p>}
+                </div>
+                {job.status === "draft" ? (
+                  <button className="button button-small" type="button" disabled={previewReadOnly || approvingJobId === job.id} onClick={() => approveVacancy(job)}>
+                    {approvingJobId === job.id ? "Sending…" : "Approve & publish"}
+                  </button>
+                ) : (
+                  <span className="count-pill">{job.status === "open" ? "Live" : job.status}</span>
+                )}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="pipeline-section" aria-labelledby="pipeline-title">
         <div className="pipeline-heading">
