@@ -110,7 +110,7 @@ Configure the IdP with the WorkBridge metadata from `https://<your-origin>/api/a
 | `WORKBRIDGE_N8N_VACANCY_INTAKE_WEBHOOK_URL` | Required for employer vacancy submission | Full HTTPS production URL copied from the **Portal Vacancy Intake** node in **WorkBridge — Slack Vacancy Intake & AI Draft**. Keep it server-side; its high-entropy path is the webhook authentication token. |
 | `WORKBRIDGE_N8N_VACANCY_APPROVAL_WEBHOOK_URL` | Required for employer approval and publication | Full HTTPS production URL copied from the **Portal Vacancy Approval** node in the same workflow. Keep it server-side; its high-entropy path is the webhook authentication token. |
 | `WORKBRIDGE_N8N_VACANCY_WEBHOOK_URL` | Optional; legacy compatibility | Full HTTPS production URL for **WorkBridge — Published Vacancy Social Drafts**, used only by the legacy `/api/vacancy-published` endpoint. The new n8n-first flow invokes this workflow directly from n8n. |
-| `WORKBRIDGE_N8N_INBOUND_SECRET` | Required when n8n callbacks or vacancy webhook integration are enabled | Shared secret with at least 32 UTF-8 bytes. Use a high-entropy random value and configure the same value on the sending and receiving sides. |
+| `WORKBRIDGE_N8N_INBOUND_SECRET` | Required for signed n8n callbacks and the legacy published-vacancy endpoint | Shared secret with at least 32 UTF-8 bytes. Use a high-entropy random value and configure the same value on the sending and receiving sides. The new portal intake and approval webhooks use their high-entropy server-only URL paths instead. |
 
 Generate a shared secret with:
 
@@ -120,7 +120,7 @@ openssl rand -hex 32
 
 **n8n-first vacancy workflow:** the employer dashboard calls `/api/vacancy-submit` and `/api/vacancy-approve`. Both endpoints require a valid Supabase access token and verify the user's company membership; organization membership is also checked when an organization is selected. The application server forwards validated requests to the two server-only webhook URLs above. n8n creates jobs as `draft`; the employer must approve the draft in the Employer Workspace before n8n changes its status to `open`. After publication, n8n invokes the existing **WorkBridge — Published Vacancy Social Drafts** workflow. The workflow uses the existing Supabase and LiteLLM credentials and sends review notifications to the existing Slack channel.
 
-The intake and approval webhook URLs use high-entropy, unguessable path tokens as server-to-server bearer secrets. Copy each Production URL directly from its n8n Webhook node into the matching Vercel server environment variable. Never expose either URL in browser code, a `NEXT_PUBLIC_` variable, Slack, or public documentation. The URLs must use HTTPS. Keep the n8n workflow active only after both URLs are configured in the application environment and the first authenticated end-to-end test succeeds.
+The intake and approval webhook URLs use high-entropy, unguessable path tokens as server-to-server bearer secrets. Copy each Production URL directly from its n8n Webhook node into the matching Vercel server environment variable. Never expose either URL in browser code, a `NEXT_PUBLIC_` variable, Slack, or public documentation. The URLs must use HTTPS. The existing n8n workflow has been activated with these two production webhook nodes. Until both Vercel variables are set, the application endpoints return HTTP 503 and cannot submit or approve jobs. After configuring them, run a test with an employer account before enabling the flow for production users.
 
 The legacy `/api/vacancy-published` endpoint remains available for compatibility. It uses `WORKBRIDGE_N8N_VACANCY_WEBHOOK_URL` and `WORKBRIDGE_N8N_INBOUND_SECRET` as described below; the new employer dashboard no longer inserts directly into `public.jobs` and does not use this legacy route.
 
@@ -187,7 +187,11 @@ SAML_IDP_ENTITY_ID=
 SAML_IDP_SSO_URL=
 SAML_IDP_CERT=
 
-# Optional n8n integration
+# n8n-first employer vacancy flow (copy Production URLs from the n8n webhook nodes)
+WORKBRIDGE_N8N_VACANCY_INTAKE_WEBHOOK_URL=
+WORKBRIDGE_N8N_VACANCY_APPROVAL_WEBHOOK_URL=
+
+# Legacy published-vacancy webhook and signed n8n callbacks
 WORKBRIDGE_N8N_VACANCY_WEBHOOK_URL=
 WORKBRIDGE_N8N_INBOUND_SECRET=
 
