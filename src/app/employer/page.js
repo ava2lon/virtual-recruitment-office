@@ -158,7 +158,7 @@ export default function EmployerPage() {
       setLocation("");
       setDescription("");
       setRequiredSkills("");
-      setMessage("Vacancy submitted to n8n for AI drafting. It will remain unpublished until you approve the draft in this workspace.");
+      setMessage("Vacancy submitted to n8n for AI drafting. Refresh this workspace in a few seconds to review the draft; it stays unpublished until you approve it.");
       await load();
     } catch (error) {
       setMessage("Could not submit vacancy: " + (error.message || "Check your employer permissions and n8n configuration."));
