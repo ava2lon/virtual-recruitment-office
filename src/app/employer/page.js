@@ -311,7 +311,7 @@ export default function EmployerPage() {
                   <span className="job-type">{job.status === "open" ? "LIVE VACANCY" : job.status === "draft" ? "DRAFT — REVIEW REQUIRED" : String(job.status || "VACANCY").toUpperCase()}</span>
                   <h2>{job.job_title}</h2>
                   <p>{[job.location, job.employment_type].filter(Boolean).join(" · ") || "Location and employment type not specified"}</p>
-                  {job.status === "draft" && <p className="job-description">This draft is not visible to candidates. Review the description and approve it when ready.</p>}
+                  {job.status === "draft" && <><p className="job-description">{job.description}</p><p className="applicant-meta">Not public yet. Approve this AI-prepared description to publish it.</p></>}
                 </div>
                 {job.status === "draft" ? (
                   <button className="button button-small" type="button" disabled={previewReadOnly || approvingJobId === job.id} onClick={() => approveVacancy(job)}>
