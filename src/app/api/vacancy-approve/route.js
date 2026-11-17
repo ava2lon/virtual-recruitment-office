@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readJsonObject } from "../../../lib/requestValidation";
+import { consumeRateLimit } from "../../../lib/rateLimit";
 import { authorizeEmployer, isUuid, postToN8n } from "../../../lib/vacancyN8n";
 
 export const runtime = "nodejs";
@@ -20,6 +21,17 @@ export async function POST(request) {
   const authorization = await authorizeEmployer(request, companyId);
   if (!authorization.ok) {
     return NextResponse.json({ error: authorization.error }, { status: authorization.status });
+  }
+
+  let rateLimit;
+  try {
+    rateLimit = await consumeRateLimit("vacancy-approve:" + authorization.user.id, { limit: 20, windowSeconds: 60 });
+  } catch {
+    return NextResponse.json({ error: "Vacancy rate-limit protection is temporarily unavailable." }, { status: 503 });
+  }
+  if (!rateLimit.allowed) {
+    const retryAfter = Math.max(1, Math.ceil((Date.parse(rateLimit.resetAt) - Date.now()) / 1000));
+    return NextResponse.json({ error: "Too many vacancy requests. Try again shortly." }, { status: 429, headers: { "Retry-After": String(retryAfter) } });
   }
 
   const { data: job, error: jobError } = await authorization.supabase
